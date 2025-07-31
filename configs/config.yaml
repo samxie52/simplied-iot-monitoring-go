@@ -1,0 +1,175 @@
+# Industrial IoT Monitoring System - 基础配置文件
+
+# 应用基础配置
+app:
+  name: "industrial-iot-monitor"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+  log_level: "info"
+
+# Kafka消息队列配置
+kafka:
+  brokers: ["localhost:9092"]
+  topics:
+    device_data: "device-data"
+    alerts: "alerts"
+  producer:
+    batch_size: 16384
+    linger_ms: 10
+    compression_type: "snappy"
+    retries: 3
+    timeout: "30s"
+  consumer:
+    group_id: "iot-consumer-group"
+    auto_offset_reset: "earliest"
+    enable_auto_commit: true
+    session_timeout: "30s"
+    max_poll_records: 500
+  security:
+    protocol: "PLAINTEXT"
+    username: ""
+    password: ""
+  timeout: "30s"
+
+# Redis缓存配置
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  database: 0
+  pool_size: 10
+  max_retries: 3
+  timeout: "5s"
+
+# PostgreSQL数据库配置
+database:
+  host: "localhost"
+  port: 5432
+  username: "postgres"
+  password: "postgres"
+  database: "iot_monitor"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: "1h"
+
+# 生产者服务配置
+producer:
+  device_count: 1000
+  send_interval: "5s"
+  data_variance: 0.1
+  batch_size: 100
+  retry_attempts: 3
+  timeout: "10s"
+
+# 消费者服务配置
+consumer:
+  worker_count: 5
+  buffer_size: 1000
+  batch_size: 50
+  processing_timeout: "30s"
+  retry_attempts: 3
+  dead_letter_queue: true
+
+# WebSocket服务配置
+websocket:
+  host: "0.0.0.0"
+  port: 8081
+  path: "/ws"
+  max_connections: 1000
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  heartbeat_interval: "30s"
+  connection_timeout: "60s"
+
+# Web服务配置
+web:
+  host: "0.0.0.0"
+  port: 8080
+  template_path: "web/templates"
+  static_path: "web/static"
+  read_timeout: "10s"
+  write_timeout: "10s"
+  max_header_bytes: 1048576
+
+# 设备模拟器配置
+device:
+  simulator:
+    enabled: true
+    device_count: 1000
+    send_interval: "5s"
+    data_variance: 0.1
+  thresholds:
+    temperature:
+      min: -20.0
+      max: 80.0
+      warning: 70.0
+      critical: 75.0
+    humidity:
+      min: 0.0
+      max: 100.0
+      warning: 85.0
+      critical: 90.0
+    battery:
+      min: 0.0
+      max: 100.0
+      warning: 20.0
+      critical: 10.0
+
+# 告警配置
+alert:
+  enabled: true
+  rules:
+    - name: "high_temperature"
+      condition: "temperature > 75"
+      severity: "critical"
+      cooldown: "5m"
+    - name: "low_battery"
+      condition: "battery < 10"
+      severity: "warning"
+      cooldown: "1h"
+    - name: "high_humidity"
+      condition: "humidity > 90"
+      severity: "medium"
+      cooldown: "10m"
+  notifications:
+    email:
+      enabled: false
+      smtp_host: "smtp.example.com"
+      smtp_port: 587
+    webhook:
+      enabled: true
+      url: "http://localhost:8080/webhook/alerts"
+
+# 监控配置
+monitoring:
+  prometheus:
+    enabled: true
+    host: "0.0.0.0"
+    port: 9090
+    path: "/metrics"
+    scrape_interval: "15s"
+  logging:
+    level: "info"
+    format: "json"
+    output: ["stdout", "file"]
+    file_path: "logs/app.log"
+    max_size: "100MB"
+    max_age: "7d"
+    max_backups: 10
+
+# 安全配置
+security:
+  encryption:
+    enabled: true
+    algorithm: "AES-256"
+    key_file: "configs/encryption.key"
+  auth:
+    enabled: false
+    jwt_secret: ""
+    token_expiry: "24h"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100

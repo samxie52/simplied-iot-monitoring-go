@@ -1,0 +1,154 @@
+# Industrial IoT Monitoring System - 生产环境配置
+
+# 应用配置 - 生产环境
+app:
+  environment: "production"
+  debug: false
+  log_level: "warn"
+
+# Kafka配置 - 生产环境
+kafka:
+  brokers: ["kafka-1:9092", "kafka-2:9092", "kafka-3:9092"]
+  producer:
+    batch_size: 32768  # 更大的批次大小提高性能
+    linger_ms: 20
+    compression_type: "lz4"  # 更好的压缩算法
+    retries: 5
+  consumer:
+    group_id: "iot-consumer-group-prod"
+    session_timeout: "60s"
+    max_poll_records: 1000
+  security:
+    protocol: "SASL_SSL"
+    username: "${KAFKA_USERNAME}"
+    password: "${KAFKA_PASSWORD}"
+  timeout: "60s"
+
+# Redis配置 - 生产环境
+redis:
+  host: "${REDIS_HOST}"
+  port: 6379
+  password: "${REDIS_PASSWORD}"
+  database: 0
+  pool_size: 20
+  max_retries: 5
+  timeout: "10s"
+
+# 数据库配置 - 生产环境
+database:
+  host: "${DB_HOST}"
+  port: 5432
+  username: "${DB_USERNAME}"
+  password: "${DB_PASSWORD}"
+  database: "iot_monitor_prod"
+  ssl_mode: "require"
+  max_open_conns: 50
+  max_idle_conns: 10
+  conn_max_lifetime: "2h"
+
+# 生产者配置 - 生产环境
+producer:
+  device_count: 10000  # 生产环境支持更多设备
+  send_interval: "5s"
+  batch_size: 500
+  retry_attempts: 5
+  timeout: "30s"
+
+# 消费者配置 - 生产环境
+consumer:
+  worker_count: 10  # 更多工作协程
+  buffer_size: 5000
+  batch_size: 200
+  processing_timeout: "60s"
+  retry_attempts: 5
+  dead_letter_queue: true
+
+# WebSocket配置 - 生产环境
+websocket:
+  host: "0.0.0.0"
+  port: 8081
+  max_connections: 10000
+  read_buffer_size: 2048
+  write_buffer_size: 2048
+  heartbeat_interval: "60s"
+  connection_timeout: "120s"
+
+# Web配置 - 生产环境
+web:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+  max_header_bytes: 2097152
+
+# 设备配置 - 生产环境
+device:
+  simulator:
+    enabled: false  # 生产环境通常不启用模拟器
+    device_count: 10000
+  thresholds:
+    temperature:
+      warning: 65.0   # 生产环境更严格的阈值
+      critical: 70.0
+    humidity:
+      warning: 80.0
+      critical: 85.0
+    battery:
+      warning: 25.0
+      critical: 15.0
+
+# 告警配置 - 生产环境
+alert:
+  enabled: true
+  rules:
+    - name: "critical_temperature"
+      condition: "temperature > 70"
+      severity: "critical"
+      cooldown: "2m"
+    - name: "critical_battery"
+      condition: "battery < 15"
+      severity: "critical"
+      cooldown: "30m"
+    - name: "high_humidity"
+      condition: "humidity > 85"
+      severity: "high"
+      cooldown: "5m"
+  notifications:
+    email:
+      enabled: true
+      smtp_host: "${SMTP_HOST}"
+      smtp_port: 587
+    webhook:
+      enabled: true
+      url: "${ALERT_WEBHOOK_URL}"
+
+# 监控配置 - 生产环境
+monitoring:
+  prometheus:
+    enabled: true
+    host: "0.0.0.0"
+    port: 9090
+    scrape_interval: "30s"
+  logging:
+    level: "warn"
+    format: "json"
+    output: ["file"]
+    file_path: "/var/log/iot-monitor/app.log"
+    max_size: "500MB"
+    max_age: "30d"
+    max_backups: 30
+
+# 安全配置 - 生产环境
+security:
+  encryption:
+    enabled: true
+    algorithm: "AES-256"
+    key_file: "/etc/iot-monitor/encryption.key"
+  auth:
+    enabled: true
+    jwt_secret: "${JWT_SECRET}"
+    token_expiry: "8h"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 5000
+    burst_size: 1000

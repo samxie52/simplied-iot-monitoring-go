@@ -92,7 +92,7 @@ func (consumer *Consumer) processMessage(message *sarama.ConsumerMessage) error 
 
 	// 打印接收到的数据
 	log.Printf("收到设备数据 - 设备ID: %s, 类型: %s, 位置: %s, 温度: %.2f°C, 湿度: %.2f%%, 状态: %s",
-		device.DeviceID, device.DeviceType, device.Location, 
+		device.DeviceID, device.DeviceType, device.Location,
 		device.Temperature, device.Humidity, device.Status)
 
 	// 数据验证和处理逻辑
@@ -171,13 +171,13 @@ func (consumer *Consumer) detectAnomalies(device IoTDevice) []string {
 func (consumer *Consumer) storeDevice(device IoTDevice) error {
 	// 这里应该实现实际的数据存储逻辑
 	// 例如：存储到PostgreSQL、InfluxDB、MongoDB等
-	
+
 	// 模拟存储延迟
 	time.Sleep(1 * time.Millisecond)
-	
-	log.Printf("设备数据已存储 [%s] - 时间戳: %s", 
+
+	log.Printf("设备数据已存储 [%s] - 时间戳: %s",
 		device.DeviceID, device.Timestamp.Format("2006-01-02 15:04:05"))
-	
+
 	return nil
 }
 

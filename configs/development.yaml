@@ -1,0 +1,81 @@
+# Industrial IoT Monitoring System - 开发环境配置
+
+# 应用配置 - 开发环境
+app:
+  environment: "development"
+  debug: true
+  log_level: "debug"
+
+# Kafka配置 - 开发环境
+kafka:
+  brokers: ["localhost:9092"]
+  producer:
+    batch_size: 1024  # 较小的批次大小用于测试
+    linger_ms: 5
+  consumer:
+    max_poll_records: 100  # 较小的轮询记录数
+
+# Redis配置 - 开发环境
+redis:
+  host: "localhost"
+  port: 6379
+  database: 1  # 使用不同的数据库
+  pool_size: 5
+
+# 数据库配置 - 开发环境
+database:
+  host: "localhost"
+  port: 5432
+  username: "postgres"
+  password: "postgres"
+  database: "iot_monitor_dev"
+  ssl_mode: "disable"
+  max_open_conns: 10
+  max_idle_conns: 2
+
+# 生产者配置 - 开发环境
+producer:
+  device_count: 100  # 较少的设备数量
+  send_interval: "3s"
+  batch_size: 10
+
+# 消费者配置 - 开发环境
+consumer:
+  worker_count: 2
+  buffer_size: 100
+  batch_size: 10
+
+# WebSocket配置 - 开发环境
+websocket:
+  port: 8081
+  max_connections: 100
+  heartbeat_interval: "15s"
+
+# Web配置 - 开发环境
+web:
+  port: 8080
+
+# 设备配置 - 开发环境
+device:
+  simulator:
+    device_count: 100
+    send_interval: "3s"
+
+# 监控配置 - 开发环境
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+  logging:
+    level: "debug"
+    format: "text"  # 开发环境使用文本格式便于阅读
+    output: ["stdout"]
+
+# 安全配置 - 开发环境
+security:
+  encryption:
+    enabled: false  # 开发环境可以禁用加密
+  auth:
+    enabled: false
+  rate_limiting:
+    enabled: false  # 开发环境禁用限流

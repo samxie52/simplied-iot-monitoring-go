@@ -1,0 +1,135 @@
+# Industrial IoT Monitoring System - 测试环境配置
+
+# 应用配置 - 测试环境
+app:
+  environment: "testing"
+  debug: false
+  log_level: "info"
+
+# Kafka配置 - 测试环境
+kafka:
+  brokers: ["localhost:9092"]
+  topics:
+    device_data: "device-data-test"
+    alerts: "alerts-test"
+  producer:
+    batch_size: 1024
+    linger_ms: 5
+    retries: 1  # 测试环境快速失败
+  consumer:
+    group_id: "iot-consumer-group-test"
+    session_timeout: "10s"
+    max_poll_records: 50
+
+# Redis配置 - 测试环境
+redis:
+  host: "localhost"
+  port: 6379
+  database: 2  # 使用测试专用数据库
+  pool_size: 3
+  timeout: "3s"
+
+# 数据库配置 - 测试环境
+database:
+  host: "localhost"
+  port: 5432
+  username: "postgres"
+  password: "postgres"
+  database: "iot_monitor_test"
+  ssl_mode: "disable"
+  max_open_conns: 5
+  max_idle_conns: 2
+  conn_max_lifetime: "30m"
+
+# 生产者配置 - 测试环境
+producer:
+  device_count: 10  # 测试环境使用很少的设备
+  send_interval: "1s"  # 更快的发送间隔用于测试
+  batch_size: 5
+  retry_attempts: 1
+  timeout: "5s"
+
+# 消费者配置 - 测试环境
+consumer:
+  worker_count: 1
+  buffer_size: 50
+  batch_size: 5
+  processing_timeout: "10s"
+  retry_attempts: 1
+  dead_letter_queue: false
+
+# WebSocket配置 - 测试环境
+websocket:
+  host: "127.0.0.1"
+  port: 8081
+  max_connections: 10
+  heartbeat_interval: "5s"
+  connection_timeout: "10s"
+
+# Web配置 - 测试环境
+web:
+  host: "127.0.0.1"
+  port: 8080
+  read_timeout: "5s"
+  write_timeout: "5s"
+
+# 设备配置 - 测试环境
+device:
+  simulator:
+    enabled: true
+    device_count: 10
+    send_interval: "1s"
+    data_variance: 0.2  # 更大的变化用于测试
+  thresholds:
+    temperature:
+      min: 0.0
+      max: 50.0
+      warning: 40.0
+      critical: 45.0
+    humidity:
+      min: 10.0
+      max: 90.0
+      warning: 75.0
+      critical: 80.0
+    battery:
+      min: 5.0
+      max: 100.0
+      warning: 30.0
+      critical: 20.0
+
+# 告警配置 - 测试环境
+alert:
+  enabled: true
+  rules:
+    - name: "test_temperature"
+      condition: "temperature > 45"
+      severity: "critical"
+      cooldown: "10s"  # 短冷却时间用于测试
+    - name: "test_battery"
+      condition: "battery < 20"
+      severity: "warning"
+      cooldown: "30s"
+  notifications:
+    email:
+      enabled: false
+    webhook:
+      enabled: false
+
+# 监控配置 - 测试环境
+monitoring:
+  prometheus:
+    enabled: false  # 测试环境可以禁用Prometheus
+    port: 9090
+  logging:
+    level: "info"
+    format: "text"
+    output: ["stdout"]
+
+# 安全配置 - 测试环境
+security:
+  encryption:
+    enabled: false
+  auth:
+    enabled: false
+  rate_limiting:
+    enabled: false
