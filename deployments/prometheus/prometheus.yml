@@ -1,0 +1,65 @@
+# Prometheus配置文件
+# Industrial IoT Monitoring System Prometheus Configuration
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # IoT生产者服务监控
+  - job_name: 'iot-producer'
+    static_configs:
+      - targets: ['producer:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # IoT消费者服务监控
+  - job_name: 'iot-consumer'
+    static_configs:
+      - targets: ['consumer:9092']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # WebSocket服务监控
+  - job_name: 'iot-websocket'
+    static_configs:
+      - targets: ['websocket:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Web服务监控
+  - job_name: 'iot-web'
+    static_configs:
+      - targets: ['web:8090']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Kafka监控
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9101']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Redis监控
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # PostgreSQL监控
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: '/metrics'
+    scrape_interval: 10s

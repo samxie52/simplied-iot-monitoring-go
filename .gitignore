@@ -1,0 +1,104 @@
+# Industrial IoT Monitoring System - Git忽略文件
+
+# Go构建产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go模块缓存
+go.sum
+
+# 构建目录
+build/
+bin/
+dist/
+
+docs/
+
+# 测试覆盖率文件
+*.cover
+coverage.out
+coverage.html
+
+# IDE和编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 配置文件（包含敏感信息）
+config/local.yaml
+config/production.yaml
+.env
+.env.local
+.env.production
+
+# 临时文件
+tmp/
+temp/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker相关
+.dockerignore
+
+# 依赖目录
+vendor/
+
+# 性能分析文件
+*.prof
+*.pprof
+
+# 调试文件
+debug
+*.debug
+
+# 证书和密钥文件
+*.pem
+*.key
+*.crt
+*.p12
+
+# 备份文件
+*.bak
+*.backup
+
+# 压缩文件
+*.tar.gz
+*.zip
+*.rar
+
+# Node.js相关（如果有前端构建）
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 监控和指标数据
+metrics/
+# prometheus/  # 注释掉，允许deployments/prometheus配置文件
+
+# Kubernetes临时文件
+*.yaml.tmp
+*.yml.tmp

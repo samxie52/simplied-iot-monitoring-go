@@ -1,0 +1,234 @@
+# Industrial IoT Monitoring System - Docker Compose配置
+# 企业级工业IoT监控系统容器编排
+
+version: '3.8'
+
+services:
+  # Zookeeper服务
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: iot-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - iot-network
+
+  # Kafka服务
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: iot-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      KAFKA_CONFLUENT_METRICS_ENABLE: 'true'
+      KAFKA_CONFLUENT_SUPPORT_CUSTOMER_ID: anonymous
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - iot-network
+
+  # Redis服务（用于缓存和会话存储）
+  redis:
+    image: redis:7.2-alpine
+    hostname: redis
+    container_name: iot-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - iot-network
+
+  # PostgreSQL数据库（用于元数据存储）
+  postgres:
+    image: postgres:15-alpine
+    hostname: postgres
+    container_name: iot-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: iot_monitoring
+      POSTGRES_USER: iot_user
+      POSTGRES_PASSWORD: iot_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - iot-network
+
+  # Prometheus监控服务
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    hostname: prometheus
+    container_name: iot-prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./deployments/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - iot-network
+
+  # Grafana可视化服务
+  grafana:
+    image: grafana/grafana:10.0.0
+    hostname: grafana
+    container_name: iot-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deployments/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - iot-network
+
+  # IoT数据生产者服务
+  producer:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.producer
+    hostname: producer
+    container_name: iot-producer
+    depends_on:
+      - kafka
+      - redis
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      REDIS_URL: redis:6379
+      LOG_LEVEL: info
+    volumes:
+      - ./config:/app/config
+    networks:
+      - iot-network
+    restart: unless-stopped
+
+  # IoT数据消费者服务
+  consumer:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.consumer
+    hostname: consumer
+    container_name: iot-consumer
+    depends_on:
+      - kafka
+      - postgres
+      - redis
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      POSTGRES_URL: postgres://iot_user:iot_password@postgres:5432/iot_monitoring?sslmode=disable
+      REDIS_URL: redis:6379
+      LOG_LEVEL: info
+    volumes:
+      - ./config:/app/config
+    networks:
+      - iot-network
+    restart: unless-stopped
+
+  # WebSocket实时通信服务
+  websocket:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.websocket
+    hostname: websocket
+    container_name: iot-websocket
+    depends_on:
+      - kafka
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      REDIS_URL: redis:6379
+      WS_PORT: 8080
+      LOG_LEVEL: info
+    volumes:
+      - ./config:/app/config
+    networks:
+      - iot-network
+    restart: unless-stopped
+
+  # Web管理界面服务
+  web:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.web
+    hostname: web
+    container_name: iot-web
+    depends_on:
+      - postgres
+      - redis
+      - websocket
+    ports:
+      - "8090:8090"
+    environment:
+      POSTGRES_URL: postgres://iot_user:iot_password@postgres:5432/iot_monitoring?sslmode=disable
+      REDIS_URL: redis:6379
+      WEBSOCKET_URL: ws://websocket:8080
+      WEB_PORT: 8090
+      LOG_LEVEL: info
+    volumes:
+      - ./config:/app/config
+      - ./web:/app/web
+    networks:
+      - iot-network
+    restart: unless-stopped
+
+# 数据卷定义
+volumes:
+  zookeeper-data:
+    driver: local
+  zookeeper-logs:
+    driver: local
+  kafka-data:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# 网络定义
+networks:
+  iot-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

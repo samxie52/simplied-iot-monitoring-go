@@ -1,0 +1,156 @@
+# Industrial IoT Monitoring System Configuration
+# 工业IoT监控系统配置文件
+
+# Kafka配置
+kafka:
+  brokers:
+    - "localhost:9092"
+  topics:
+    - "iot-sensor-data"
+  producer:
+    acks: "all"
+    retries: 5
+    compression: "snappy"
+  consumer:
+    group_id: "iot-consumer-group"
+    auto_offset_reset: "latest"
+    session_timeout: "10s"
+    heartbeat_interval: "3s"
+
+# Redis配置
+redis:
+  url: "localhost:6379"
+  password: ""
+  db: 0
+  pool_size: 10
+  timeout: "5s"
+
+# PostgreSQL配置
+postgres:
+  host: "localhost"
+  port: 5432
+  database: "iot_monitoring"
+  username: "iot_user"
+  password: "iot_password"
+  sslmode: "disable"
+  max_connections: 25
+  max_idle_connections: 5
+  connection_lifetime: "5m"
+
+# WebSocket配置
+websocket:
+  port: "8080"
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  read_timeout: "60s"
+  write_timeout: "10s"
+  ping_interval: "54s"
+
+# Web服务配置
+web:
+  port: "8090"
+  read_timeout: "15s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+  static_dir: "web/static"
+  template_dir: "web/templates"
+
+# 生产者配置
+producer:
+  device_count: 100
+  interval: "1s"
+  batch_size: 10
+
+# 日志配置
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file: "logs/iot-monitoring.log"
+  max_size: "100MB"
+  max_backups: 5
+  max_age: 30
+
+# 监控配置
+monitoring:
+  prometheus:
+    enabled: true
+    port: "9090"
+    path: "/metrics"
+  health_check:
+    enabled: true
+    interval: "30s"
+    timeout: "5s"
+
+# 安全配置
+security:
+  jwt:
+    secret: "your-jwt-secret-key"
+    expiration: "24h"
+  cors:
+    enabled: true
+    origins:
+      - "http://localhost:3000"
+      - "http://localhost:8090"
+    methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+    headers:
+      - "Content-Type"
+      - "Authorization"
+
+# 业务配置
+business:
+  alerts:
+    temperature:
+      min: 5.0
+      max: 45.0
+    humidity:
+      min: 20.0
+      max: 80.0
+    battery:
+      min: 20.0
+    pressure:
+      min: 1000.0
+      max: 1100.0
+  
+  devices:
+    types:
+      - "温度传感器"
+      - "湿度传感器"
+      - "压力传感器"
+      - "综合传感器"
+    locations:
+      - "车间A"
+      - "车间B"
+      - "车间C"
+      - "仓库1"
+      - "仓库2"
+      - "办公区"
+    statuses:
+      - "正常"
+      - "警告"
+      - "故障"
+
+# 性能配置
+performance:
+  max_concurrent_connections: 10000
+  message_buffer_size: 1000
+  worker_pool_size: 50
+  batch_processing:
+    enabled: true
+    size: 100
+    timeout: "1s"
+
+# 开发环境配置
+development:
+  debug: true
+  hot_reload: true
+  profiling:
+    enabled: true
+    port: "6060"
+  mock_data:
+    enabled: true
+    interval: "100ms"
