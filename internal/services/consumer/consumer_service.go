@@ -124,12 +124,28 @@ func NewConsumerService(cfg *config.AppConfig) (*ConsumerService, error) {
 		minThroughput:       10,
 	}
 
+	// 创建Prometheus指标收集器
+	var metricsCollector MetricsCollector
+	if cfg.Monitor.Prometheus.Enabled {
+		prometheusCollector, err := NewPrometheusMetricsCollector(&cfg.Monitor.Prometheus)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create prometheus metrics collector: %w", err)
+		}
+		metricsCollector = prometheusCollector
+		log.Println("Prometheus指标收集器已启用")
+	} else {
+		metricsCollector = NewSimpleMetricsCollector()
+		log.Println("使用简单指标收集器")
+	}
+
 	service := &ConsumerService{
 		config:           cfg,
 		kafkaConsumer:    kafkaConsumer,
 		messageProcessor: messageProcessor,
 		errorHandler:     errorHandler,
 		healthMonitor:    healthMonitor,
+		metricsCollector: metricsCollector,
 		ctx:              ctx,
 		cancel:           cancel,
 		isRunning:        false,
@@ -157,6 +173,13 @@ func (cs *ConsumerService) Start() error {
 	// 启动健康监控
 	cs.wg.Add(1)
 	go cs.runHealthMonitor()
+
+	// 启动Prometheus指标收集器
+	if prometheusCollector, ok := cs.metricsCollector.(*PrometheusMetricsCollector); ok {
+		if err := prometheusCollector.Start(); err != nil {
+			log.Printf("Failed to start Prometheus metrics collector: %v", err)
+		}
+	}
 
 	// 启动指标收集
 	if cs.metricsCollector != nil {
@@ -187,6 +210,13 @@ func (cs *ConsumerService) Stop() error {
 	// 停止Kafka消费者
 	if err := cs.kafkaConsumer.Stop(); err != nil {
 		log.Printf("停止Kafka消费者时发生错误: %v", err)
+	}
+
+	// 停止Prometheus指标收集器
+	if prometheusCollector, ok := cs.metricsCollector.(*PrometheusMetricsCollector); ok {
+		if err := prometheusCollector.Stop(); err != nil {
+			log.Printf("Failed to stop Prometheus metrics collector: %v", err)
+		}
 	}
 
 	// 等待所有协程结束
