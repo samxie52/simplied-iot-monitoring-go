@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-producer
+  namespace: iot-monitoring
+  labels:
+    app: industrial-iot-producer
+    component: producer
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: industrial-iot-producer
+      component: producer
+  template:
+    metadata:
+      labels:
+        app: industrial-iot-producer
+        component: producer
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: iot-producer-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+      - name: iot-producer
+        image: industrial-iot-producer:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http-metrics
+          containerPort: 8080
+          protocol: TCP
+        - name: http-health
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/production.yaml"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: METRICS_PORT
+          value: "8080"
+        - name: HEALTH_PORT
+          value: "8081"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: iot-producer-secrets
+              key: db-password
+        - name: KAFKA_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: iot-producer-secrets
+              key: kafka-username
+              optional: true
+        - name: KAFKA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: iot-producer-secrets
+              key: kafka-password
+              optional: true
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+          readOnly: true
+        - name: tmp-volume
+          mountPath: /tmp
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http-health
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http-health
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http-health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
+      volumes:
+      - name: config-volume
+        configMap:
+          name: iot-producer-config
+          items:
+          - key: production.yaml
+            path: production.yaml
+      - name: tmp-volume
+        emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - industrial-iot-producer
+              topologyKey: kubernetes.io/hostname

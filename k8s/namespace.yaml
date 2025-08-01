@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iot-monitoring
+  labels:
+    name: iot-monitoring
+    environment: production
+    app: industrial-iot-producer

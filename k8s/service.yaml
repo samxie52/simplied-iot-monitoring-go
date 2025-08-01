@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: iot-producer-service
+  namespace: iot-monitoring
+  labels:
+    app: industrial-iot-producer
+    component: producer
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http-metrics
+    port: 8080
+    targetPort: http-metrics
+    protocol: TCP
+  - name: http-health
+    port: 8081
+    targetPort: http-health
+    protocol: TCP
+  selector:
+    app: industrial-iot-producer
+    component: producer
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iot-producer-headless
+  namespace: iot-monitoring
+  labels:
+    app: industrial-iot-producer
+    component: producer
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: http-metrics
+    port: 8080
+    targetPort: http-metrics
+    protocol: TCP
+  - name: http-health
+    port: 8081
+    targetPort: http-health
+    protocol: TCP
+  selector:
+    app: industrial-iot-producer
+    component: producer

@@ -1,12 +1,35 @@
-# Simplified IoT Monitoring
+# Industrial IoT Kafka Producer
 
-🚀 **基于 Go + WebSocket + Kafka 的工业设备实时数据监控系统**
+🚀 **企业级工业物联网数据处理系统 - 生产就绪版本**
 
-[![Go Version](https://img.shields.io/badge/Go-1.24+-blue.svg)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.19+-blue.svg)](https://golang.org)
 [![Kafka](https://img.shields.io/badge/Kafka-3.0+-orange.svg)](https://kafka.apache.org)
-[![WebSocket](https://img.shields.io/badge/WebSocket-RFC6455-green.svg)](https://tools.ietf.org/html/rfc6455)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-blue.svg)](https://kubernetes.io)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
+[![Production Ready](https://img.shields.io/badge/Production-Ready-green.svg)]()
+
+## 🎯 快速启动
+
+**只需一条命令即可完成完整部署：**
+
+```bash
+# 一键部署所有服务 (推荐)
+./scripts/full_deployment.sh recommended
+
+# 或者部署完整版本 (包含Grafana和Jaeger)
+./scripts/full_deployment.sh full
+```
+
+**5分钟内完成：**
+- ✅ 中间件服务部署 (Kafka, Redis, PostgreSQL, Prometheus)
+- ✅ 配置自动更新
+- ✅ 应用构建和启动
+- ✅ 自动化测试验证
+- ✅ 监控仪表板部署
+
+📖 **详细指南**: [QUICK_START.md](QUICK_START.md)
 
 ## 📋 项目描述
 

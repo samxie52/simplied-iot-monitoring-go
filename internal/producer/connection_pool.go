@@ -83,21 +83,8 @@ func (cp *ConnectionPool) Start() error {
 		return fmt.Errorf("connection pool is already running")
 	}
 
-	// 预创建一些连接
-	initialSize := cp.maxSize / 2
-	if initialSize < 1 {
-		initialSize = 1
-	}
-
-	for i := 0; i < initialSize; i++ {
-		client, err := cp.createConnection()
-		if err != nil {
-			return fmt.Errorf("failed to create initial connection: %w", err)
-		}
-		cp.connections <- client
-		cp.currentSize++
-	}
-
+	// 不预创建连接，而是在需要时创建
+	// 这样可以避免启动时的阻塞
 	cp.isRunning = true
 	return nil
 }
@@ -235,7 +222,6 @@ func (cp *ConnectionPool) Stop() error {
 	return nil
 }
 
-// GetMetrics 获取连接池指标
 func (cp *ConnectionPool) GetMetrics() *ConnectionMetrics {
 	cp.mutex.RLock()
 	defer cp.mutex.RUnlock()
@@ -244,9 +230,29 @@ func (cp *ConnectionPool) GetMetrics() *ConnectionMetrics {
 	activeConnections := cp.currentSize - idleConnections
 
 	return &ConnectionMetrics{
-		TotalConnections:  cp.currentSize,
-		ActiveConnections: activeConnections,
-		IdleConnections:   idleConnections,
+		TotalConnections:    cp.maxSize,
+		ActiveConnections:   activeConnections,
+		IdleConnections:     idleConnections,
+		FailedConnections:   0, // TODO: 实现失败连接计数
+		ConnectionsCreated:  0, // TODO: 实现创建连接计数
+		ConnectionsDestroyed: 0, // TODO: 实现销毁连接计数
+		AverageLatency:      0, // TODO: 实现平均延迟计算
+	}
+}
+
+// GetStats 获取连接池统计信息 (兼容性方法)
+func (cp *ConnectionPool) GetStats() map[string]interface{} {
+	metrics := cp.GetMetrics()
+	return map[string]interface{}{
+		"total_connections":     metrics.TotalConnections,
+		"active_connections":    metrics.ActiveConnections,
+		"idle_connections":      metrics.IdleConnections,
+		"failed_connections":    metrics.FailedConnections,
+		"connections_created":   metrics.ConnectionsCreated,
+		"connections_destroyed": metrics.ConnectionsDestroyed,
+		"average_latency_ms":    float64(metrics.AverageLatency) / float64(time.Millisecond),
+		"is_running":            cp.isRunning,
+		"max_size":              cp.maxSize,
 	}
 }
 
@@ -492,4 +498,80 @@ func (hc *ConnectionHealthChecker) SetTimeout(timeout time.Duration) {
 	hc.mutex.Lock()
 	defer hc.mutex.Unlock()
 	hc.timeout = timeout
+}
+
+// Name 返回健康检查器名称 (实现HealthChecker接口)
+func (hc *ConnectionHealthChecker) Name() string {
+	return "connection_health_checker"
+}
+
+// Check 执行健康检查 (实现HealthChecker接口)
+func (hc *ConnectionHealthChecker) Check(ctx context.Context) *ComponentHealth {
+	hc.mutex.RLock()
+	defer hc.mutex.RUnlock()
+
+	// 创建组件健康状态
+	health := &ComponentHealth{
+		Name:      "connection_pool",
+		Status:    HealthStatusHealthy,
+		Message:   "All connections are healthy",
+		LastCheck: time.Now(),
+		Metadata:  make(map[string]interface{}),
+	}
+
+	// 检查连接池状态
+	if hc.pool != nil {
+		poolHealthy := hc.checkConnectionPool()
+		if !poolHealthy {
+			health.Status = HealthStatusCritical
+			health.Message = "Connection pool is unhealthy"
+			health.ErrorCount++
+		}
+		
+		// 添加连接池指标
+		poolMetrics := hc.pool.GetMetrics()
+		health.Metadata["total_connections"] = poolMetrics.TotalConnections
+		health.Metadata["active_connections"] = poolMetrics.ActiveConnections
+		health.Metadata["idle_connections"] = poolMetrics.IdleConnections
+	}
+
+	// 检查Kafka生产者状态
+	if hc.producer != nil {
+		producerHealthy := hc.checkKafkaProducer()
+		if !producerHealthy {
+			health.Status = HealthStatusCritical
+			health.Message = "Kafka producer is unhealthy"
+			health.ErrorCount++
+		}
+		
+		// 添加生产者指标
+		producerMetrics := hc.producer.GetMetrics()
+		health.Metadata["messages_per_second"] = producerMetrics.MessagesPerSecond
+		health.Metadata["send_errors"] = producerMetrics.SendErrors
+		health.Metadata["queue_depth"] = producerMetrics.QueueDepth
+	}
+
+	// 检查设备模拟器状态
+	if hc.simulator != nil {
+		simulatorHealthy := hc.checkDeviceSimulator()
+		if !simulatorHealthy {
+			health.Status = HealthStatusCritical
+			health.Message = "Device simulator is unhealthy"
+			health.ErrorCount++
+		}
+		
+		// 添加模拟器指标
+		health.Metadata["device_count"] = hc.simulator.GetDeviceCount()
+		health.Metadata["active_devices"] = hc.simulator.GetActiveDeviceCount()
+	}
+
+	health.CheckCount++
+	return health
+}
+
+// IsEnabled 检查健康检查器是否启用 (实现HealthChecker接口)
+func (hc *ConnectionHealthChecker) IsEnabled() bool {
+	hc.mutex.RLock()
+	defer hc.mutex.RUnlock()
+	return hc.isRunning
 }

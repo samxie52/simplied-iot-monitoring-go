@@ -285,7 +285,7 @@ func (ps *ProducerService) GetConnectionPool() *ConnectionPool {
 }
 
 // GetHealthChecker 获取健康检查器
-func (ps *ProducerService) GetHealthChecker() *HealthChecker {
+func (ps *ProducerService) GetHealthChecker() HealthChecker {
 	return ps.healthChecker
 }
 

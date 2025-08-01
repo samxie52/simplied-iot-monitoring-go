@@ -212,7 +212,10 @@ func loadConfig() (*config.AppConfig, error) {
 	if configFile != "" {
 		if _, err := os.Stat(configFile); err == nil {
 			manager := config.NewConfigManager()
-			return manager.LoadDefault()
+			if err := manager.Load(configFile, config.Development); err != nil {
+				return nil, fmt.Errorf("加载配置文件失败: %w", err)
+			}
+			return manager.GetConfig(), nil
 		}
 	}
 

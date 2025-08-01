@@ -515,8 +515,7 @@ func (srhc *SystemResourceHealthChecker) Check(ctx context.Context) *ComponentHe
 	}
 	
 	// 检查内存使用情况
-	var memStats config.MemStats
-	config.ReadMemStats(&memStats)
+	memStats := config.ReadMemStats()
 	
 	memUsagePercent := float64(memStats.Alloc) / float64(memStats.Sys) * 100
 	

@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"simplied-iot-monitoring-go/internal/config"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // ConfigChangeEvent 配置变更事件
@@ -30,17 +31,17 @@ type ConfigChangeHandler interface {
 
 // ConfigWatcher 配置文件监控器
 type ConfigWatcher struct {
-	watcher      *fsnotify.Watcher
-	configPaths  map[string]string // 配置类型 -> 文件路径
-	handlers     map[string][]ConfigChangeHandler
+	watcher        *fsnotify.Watcher
+	configPaths    map[string]string // 配置类型 -> 文件路径
+	handlers       map[string][]ConfigChangeHandler
 	currentConfigs map[string]interface{}
-	debounceTime time.Duration
-	lastChange   map[string]time.Time
-	ctx          context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	mutex        sync.RWMutex
-	metrics      *PrometheusMetrics
+	debounceTime   time.Duration
+	lastChange     map[string]time.Time
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	mutex          sync.RWMutex
+	metrics        *PrometheusMetrics
 }
 
 // NewConfigWatcher 创建配置监控器
@@ -234,28 +235,28 @@ func (cw *ConfigWatcher) loadConfig(configType, filePath string) error {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var config interface{}
 	switch configType {
 	case "kafka_producer":
 		var kafkaConfig config.KafkaProducer
 		if err := json.Unmarshal(data, &kafkaConfig); err != nil {
 			return fmt.Errorf("failed to unmarshal kafka config: %w", err)
 		}
-		config = kafkaConfig
+		cw.currentConfigs[configType] = kafkaConfig
 	case "device_simulator":
 		var deviceConfig config.DeviceSimulator
 		if err := json.Unmarshal(data, &deviceConfig); err != nil {
 			return fmt.Errorf("failed to unmarshal device config: %w", err)
 		}
-		config = deviceConfig
+		cw.currentConfigs[configType] = deviceConfig
 	default:
 		// 通用JSON配置
-		if err := json.Unmarshal(data, &config); err != nil {
+		var genericConfig interface{}
+		if err := json.Unmarshal(data, &genericConfig); err != nil {
 			return fmt.Errorf("failed to unmarshal config: %w", err)
 		}
+		cw.currentConfigs[configType] = genericConfig
 	}
 
-	cw.currentConfigs[configType] = config
 	return nil
 }
 
@@ -342,7 +343,7 @@ func NewDeviceSimulatorConfigHandler(simulator *DeviceSimulator) *DeviceSimulato
 	}
 }
 
-// GetConfigType 获取配置类型
+// ... (rest of the code remains the same)
 func (dsch *DeviceSimulatorConfigHandler) GetConfigType() string {
 	return "device_simulator"
 }

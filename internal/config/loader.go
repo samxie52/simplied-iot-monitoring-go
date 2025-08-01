@@ -356,7 +356,6 @@ func (cm *viperConfigManager) Encrypt(key string) error {
 	}
 	
 	return fmt.Errorf("加密功能已移除")
-	return nil
 }
 
 // Decrypt 解密配置值

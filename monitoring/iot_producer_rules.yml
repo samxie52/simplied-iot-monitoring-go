@@ -1,0 +1,120 @@
+groups:
+- name: iot_producer_alerts
+  rules:
+  # 高错误率告警
+  - alert: HighErrorRate
+    expr: rate(kafka_send_errors_total[5m]) > 0.1
+    for: 2m
+    labels:
+      severity: warning
+      component: iot-producer
+    annotations:
+      summary: "IoT Producer high error rate detected"
+      description: "IoT Producer error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+  # 消息发送延迟告警
+  - alert: HighSendLatency
+    expr: histogram_quantile(0.95, rate(kafka_send_duration_seconds_bucket[5m])) > 1.0
+    for: 5m
+    labels:
+      severity: warning
+      component: iot-producer
+    annotations:
+      summary: "IoT Producer high send latency"
+      description: "95th percentile send latency is {{ $value }}s over the last 5 minutes"
+
+  # 内存使用率告警
+  - alert: HighMemoryUsage
+    expr: (process_resident_memory_bytes / 1024 / 1024) > 400
+    for: 5m
+    labels:
+      severity: warning
+      component: iot-producer
+    annotations:
+      summary: "IoT Producer high memory usage"
+      description: "Memory usage is {{ $value }}MB, exceeding 400MB threshold"
+
+  # CPU使用率告警
+  - alert: HighCPUUsage
+    expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+      component: iot-producer
+    annotations:
+      summary: "IoT Producer high CPU usage"
+      description: "CPU usage is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+  # 队列深度告警
+  - alert: HighQueueDepth
+    expr: kafka_producer_buffer_depth > 8000
+    for: 2m
+    labels:
+      severity: critical
+      component: iot-producer
+    annotations:
+      summary: "IoT Producer queue depth too high"
+      description: "Producer buffer depth is {{ $value }}, approaching capacity"
+
+  # 连接失败告警
+  - alert: KafkaConnectionFailure
+    expr: kafka_connection_failures_total > 0
+    for: 1m
+    labels:
+      severity: critical
+      component: iot-producer
+    annotations:
+      summary: "Kafka connection failures detected"
+      description: "{{ $value }} Kafka connection failures in the last minute"
+
+  # 设备数据生成停止告警
+  - alert: DeviceDataGenerationStopped
+    expr: rate(device_data_generated_total[5m]) == 0
+    for: 3m
+    labels:
+      severity: critical
+      component: iot-producer
+    annotations:
+      summary: "Device data generation stopped"
+      description: "No device data has been generated in the last 5 minutes"
+
+  # 批处理效率低告警
+  - alert: LowBatchEfficiency
+    expr: (rate(kafka_batches_sent_total[5m]) / rate(kafka_messages_sent_total[5m])) < 0.1
+    for: 5m
+    labels:
+      severity: warning
+      component: iot-producer
+    annotations:
+      summary: "Low batch processing efficiency"
+      description: "Batch efficiency is {{ $value | humanizePercentage }}, below optimal threshold"
+
+- name: iot_producer_recording_rules
+  rules:
+  # 消息发送速率
+  - record: iot:kafka_messages_sent_rate
+    expr: rate(kafka_messages_sent_total[1m])
+
+  # 错误率
+  - record: iot:kafka_error_rate
+    expr: rate(kafka_send_errors_total[1m]) / rate(kafka_messages_sent_total[1m])
+
+  # 平均发送延迟
+  - record: iot:kafka_send_latency_avg
+    expr: rate(kafka_send_duration_seconds_sum[1m]) / rate(kafka_send_duration_seconds_count[1m])
+
+  # 设备数据生成速率
+  - record: iot:device_data_generation_rate
+    expr: rate(device_data_generated_total[1m])
+
+  # 批处理效率
+  - record: iot:batch_efficiency
+    expr: rate(kafka_batches_sent_total[1m]) / rate(kafka_messages_sent_total[1m])
+
+  # 内存使用率
+  - record: iot:memory_usage_mb
+    expr: process_resident_memory_bytes / 1024 / 1024
+
+  # CPU使用率
+  - record: iot:cpu_usage_percent
+    expr: rate(process_cpu_seconds_total[1m]) * 100

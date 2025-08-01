@@ -521,3 +521,52 @@ func (ds *DeviceSimulator) IsRunning() bool {
 	defer ds.mutex.RUnlock()
 	return ds.isRunning
 }
+
+// GetStats 获取设备模拟器统计信息
+func (ds *DeviceSimulator) GetStats() map[string]interface{} {
+	ds.mutex.RLock()
+	defer ds.mutex.RUnlock()
+
+	activeCount := 0
+	inactiveCount := 0
+	lastUpdateTimes := make([]time.Time, 0, len(ds.devices))
+
+	for _, device := range ds.devices {
+		if device.IsActive {
+			activeCount++
+		} else {
+			inactiveCount++
+		}
+		lastUpdateTimes = append(lastUpdateTimes, device.LastUpdate)
+	}
+
+	// 计算平均更新间隔
+	var avgUpdateInterval time.Duration
+	if len(lastUpdateTimes) > 1 {
+		totalInterval := time.Duration(0)
+		for i := 1; i < len(lastUpdateTimes); i++ {
+			interval := lastUpdateTimes[i].Sub(lastUpdateTimes[i-1])
+			if interval > 0 {
+				totalInterval += interval
+			}
+		}
+		if totalInterval > 0 {
+			avgUpdateInterval = totalInterval / time.Duration(len(lastUpdateTimes)-1)
+		}
+	}
+
+	return map[string]interface{}{
+		"total_devices":        len(ds.devices),
+		"active_devices":       activeCount,
+		"inactive_devices":     inactiveCount,
+		"is_running":           ds.isRunning,
+		"worker_pool_size":     ds.config.WorkerPoolSize,
+		"queue_buffer_size":    ds.config.QueueBufferSize,
+		"sample_interval_ms":   float64(ds.config.SampleInterval) / float64(time.Millisecond),
+		"data_variation":       ds.config.DataVariation,
+		"anomaly_rate":         ds.config.AnomalyRate,
+		"trend_enabled":        ds.config.TrendEnabled,
+		"trend_strength":       ds.config.TrendStrength,
+		"avg_update_interval_ms": float64(avgUpdateInterval) / float64(time.Millisecond),
+	}
+}

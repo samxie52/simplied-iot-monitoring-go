@@ -1,7 +1,6 @@
-package main
+package producer
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -115,7 +114,7 @@ func TestBasicIntegration(t *testing.T) {
 	t.Run("DeviceSimulator Creation", func(t *testing.T) {
 		// 创建模拟的Kafka生产者用于测试
 		mockProducer := &producer.MockKafkaProducer{}
-		
+
 		// 测试设备模拟器创建
 		deviceSimulator := producer.NewDeviceSimulator(
 			&cfg.Device.Simulator,
@@ -205,18 +204,18 @@ func TestPerformanceComponents(t *testing.T) {
 func TestConfigurationCompatibility(t *testing.T) {
 	// 测试配置结构的完整性
 	cfg := &config.AppConfig{}
-	
+
 	// 验证所有必需的配置字段都存在
 	t.Run("Kafka Configuration", func(t *testing.T) {
 		cfg.Kafka.Brokers = []string{"localhost:9092"}
 		cfg.Kafka.Topics.DeviceData = "device-data"
 		cfg.Kafka.Topics.Alerts = "alerts"
-		
+
 		// 验证KafkaProducer配置
 		cfg.Kafka.Producer.ClientID = "test-client"
 		cfg.Kafka.Producer.BatchSize = 100
 		cfg.Kafka.Producer.Timeout = 30 * time.Second
-		
+
 		t.Log("Kafka configuration structure is valid")
 	})
 
@@ -226,7 +225,7 @@ func TestConfigurationCompatibility(t *testing.T) {
 		cfg.Device.Simulator.SampleInterval = 1 * time.Second
 		cfg.Device.Simulator.WorkerPoolSize = 4
 		cfg.Device.Simulator.QueueBufferSize = 1000
-		
+
 		t.Log("Device configuration structure is valid")
 	})
 
@@ -235,7 +234,7 @@ func TestConfigurationCompatibility(t *testing.T) {
 		cfg.Producer.SendInterval = 1 * time.Second
 		cfg.Producer.BatchSize = 100
 		cfg.Producer.Timeout = 30 * time.Second
-		
+
 		t.Log("Producer configuration structure is valid")
 	})
 

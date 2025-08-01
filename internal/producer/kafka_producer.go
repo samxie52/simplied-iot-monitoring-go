@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -16,6 +17,8 @@ type KafkaProducer struct {
 	producer     sarama.AsyncProducer
 	config       *config.KafkaProducer
 	topic        string
+	brokers      []string
+	saramaConfig *sarama.Config
 	batchBuffer  chan *sarama.ProducerMessage
 	errorChan    chan *sarama.ProducerError
 	successChan  chan *sarama.ProducerMessage
@@ -55,6 +58,12 @@ func NewKafkaProducer(brokers []string, topic string, producerConfig *config.Kaf
 	saramaConfig.Producer.Flush.Frequency = producerConfig.FlushFrequency
 	saramaConfig.Producer.Flush.Messages = producerConfig.BatchSize
 	saramaConfig.ClientID = producerConfig.ClientID
+	
+	// 设置网络超时
+	saramaConfig.Net.DialTimeout = producerConfig.Timeout
+	saramaConfig.Net.ReadTimeout = producerConfig.Timeout
+	saramaConfig.Net.WriteTimeout = producerConfig.Timeout
+	saramaConfig.Version = sarama.V2_6_0_0
 
 	// 设置压缩类型
 	switch producerConfig.CompressionType {
@@ -70,17 +79,15 @@ func NewKafkaProducer(brokers []string, topic string, producerConfig *config.Kaf
 		saramaConfig.Producer.Compression = sarama.CompressionNone
 	}
 
-	producer, err := sarama.NewAsyncProducer(brokers, saramaConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kafka producer: %w", err)
-	}
-
+	// 不在创建时立即连接，而是在Start时连接
 	ctx, cancel := context.WithCancel(context.Background())
 
 	kp := &KafkaProducer{
-		producer:    producer,
+		producer:    nil, // 延迟创建
 		config:      producerConfig,
 		topic:       topic,
+		brokers:     brokers,
+		saramaConfig: saramaConfig,
 		batchBuffer: make(chan *sarama.ProducerMessage, producerConfig.ChannelBufferSize),
 		errorChan:   make(chan *sarama.ProducerError, 100),
 		successChan: make(chan *sarama.ProducerMessage, 100),
@@ -102,13 +109,80 @@ func (kp *KafkaProducer) Start() error {
 		return fmt.Errorf("producer is already running")
 	}
 
+	// 在这里创建 Sarama 生产者，带重试逻辑
+	if kp.producer == nil {
+		log.Printf("正在连接到Kafka brokers: %v", kp.brokers)
+		
+		// 尝试创建生产者，带重试
+		var producer sarama.AsyncProducer
+		var err error
+		maxRetries := 3
+		retryDelay := 2 * time.Second
+		
+		for i := 0; i < maxRetries; i++ {
+			log.Printf("尝试连接Kafka (第%d/%d次)...", i+1, maxRetries)
+			
+			// 使用context控制超时
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			done := make(chan error, 1)
+			
+			go func() {
+				p, e := sarama.NewAsyncProducer(kp.brokers, kp.saramaConfig)
+				if e != nil {
+					done <- e
+					return
+				}
+				producer = p
+				done <- nil
+			}()
+			
+			select {
+			case err = <-done:
+				cancel()
+				if err == nil {
+					log.Println("Kafka生产者创建成功!")
+					break
+				}
+				log.Printf("Kafka连接失败 (第%d次): %v", i+1, err)
+			case <-ctx.Done():
+				cancel()
+				err = fmt.Errorf("连接超时")
+				log.Printf("Kafka连接超时 (第%d次)", i+1)
+			}
+			
+			if err == nil {
+				break
+			}
+			
+			if i < maxRetries-1 {
+				log.Printf("等待%v后重试...", retryDelay)
+				time.Sleep(retryDelay)
+				retryDelay *= 2 // 指数退避
+			}
+		}
+		
+		if err != nil {
+			log.Printf("警告: Kafka生产者创建失败，将在后台继续尝试重连: %v", err)
+			// 不返回错误，允许服务继续启动
+			// 后续可以实现后台重连逻辑
+			kp.producer = nil
+		} else {
+			kp.producer = producer
+		}
+	}
+
 	kp.isRunning = true
 
-	// 启动消息处理协程
-	kp.wg.Add(3)
-	go kp.handleSuccesses()
-	go kp.handleErrors()
-	go kp.batchProcessor()
+	// 只有在Kafka生产者可用时才启动消息处理协程
+	if kp.producer != nil {
+		kp.wg.Add(3)
+		go kp.handleSuccesses()
+		go kp.handleErrors()
+		go kp.batchProcessor()
+		log.Println("Kafka消息处理协程已启动")
+	} else {
+		log.Println("警告: Kafka生产者不可用，消息处理协程未启动")
+	}
 
 	return nil
 }
@@ -117,6 +191,13 @@ func (kp *KafkaProducer) Start() error {
 func (kp *KafkaProducer) SendMessage(key string, value interface{}) error {
 	if !kp.isRunning {
 		return fmt.Errorf("producer is not running")
+	}
+	
+	// 检查Kafka生产者是否可用
+	if kp.producer == nil {
+		log.Printf("警告: Kafka生产者不可用，消息将被丢弃: key=%s", key)
+		kp.incrementDroppedMessages()
+		return fmt.Errorf("kafka producer is not available")
 	}
 
 	// 序列化消息
@@ -241,8 +322,14 @@ func (kp *KafkaProducer) Stop() error {
 	kp.cancel()
 	kp.wg.Wait()
 
-	if err := kp.producer.Close(); err != nil {
-		return fmt.Errorf("failed to close producer: %w", err)
+	// 只有在生产者存在时才关闭
+	if kp.producer != nil {
+		if err := kp.producer.Close(); err != nil {
+			return fmt.Errorf("failed to close producer: %w", err)
+		}
+		log.Println("Kafka生产者已关闭")
+	} else {
+		log.Println("Kafka生产者为空，无需关闭")
 	}
 
 	kp.isRunning = false

@@ -8,19 +8,35 @@ app:
 
 # Kafka配置 - 开发环境
 kafka:
-  brokers: ["localhost:9092"]
+  brokers: ["192.168.5.16:9092"]
+  topics:
+    device_data: "device-data"
+    alerts: "alerts"
   producer:
-    batch_size: 1024  # 较小的批次大小用于测试
-    linger_ms: 5
+    client_id: "iot-producer-dev"
+    batch_size: 1024
+    batch_timeout: "10ms"
+    compression_type: "snappy"
+    max_retries: 3
+    retry_backoff: "100ms"
+    required_acks: 1
+    flush_frequency: "10ms"
+    channel_buffer_size: 256
+    timeout: "10s"
   consumer:
-    max_poll_records: 100  # 较小的轮询记录数
+    group_id: "iot-consumer-group"
+    auto_offset_reset: "earliest"
+    enable_auto_commit: true
+    session_timeout: "30s"
+    max_poll_records: 100
 
 # Redis配置 - 开发环境
 redis:
-  host: "localhost"
+  host: "192.168.5.16"
   port: 6379
+  password: "redis123"
   database: 1  # 使用不同的数据库
-  pool_size: 5
+  pool_size: 10
 
 # 数据库配置 - 开发环境
 database:

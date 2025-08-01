@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iot-producer-config
+  namespace: iot-monitoring
+  labels:
+    app: industrial-iot-producer
+    component: config
+data:
+  production.yaml: |
+    # Industrial IoT Kafka Producer - Production Configuration
+    environment: production
+    
+    # Kafka Configuration
+    kafka:
+      brokers:
+        - "kafka-cluster-kafka-bootstrap.kafka:9092"
+      producer:
+        topic: "industrial-iot-data"
+        batch_size: 1000
+        flush_interval: 1000
+        compression_type: "gzip"
+        max_retries: 5
+        retry_backoff: 100
+        acks: 1
+        max_message_bytes: 1048576
+        
+    # Producer Configuration  
+    producer:
+      buffer_size: 50000
+      worker_count: 8
+      batch_size: 500
+      flush_interval: 500
+      
+    # Device Simulator Configuration
+    device:
+      device_count: 100
+      sample_interval: 1000
+      data_variation: 0.15
+      
+    # Web Server Configuration
+    web:
+      port: 8080
+      read_timeout: 30
+      write_timeout: 30
+      max_header_bytes: 1048576
+      
+    # Database Configuration (if needed)
+    db:
+      host: "postgres-service.database:5432"
+      name: "iot_monitoring"
+      user: "iot_user"
+      ssl_mode: "require"
+      max_open_conns: 25
+      max_idle_conns: 5
+      conn_max_lifetime: 300
+      
+    # Alert Configuration
+    alert:
+      enabled: true
+      webhook_url: "http://alertmanager.monitoring:9093/api/v1/alerts"
+      retry_attempts: 3
+      retry_delay: 5000
+      
+    # Logging Configuration
+    logging:
+      level: "info"
+      format: "json"
+      output: "stdout"
+      
+  log4j.properties: |
+    # Kafka client logging configuration
+    log4j.rootLogger=WARN, stdout
+    log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+    log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+    log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+    log4j.logger.kafka=WARN
+    log4j.logger.org.apache.kafka=WARN

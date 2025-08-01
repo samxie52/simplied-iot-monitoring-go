@@ -1,6 +1,7 @@
 package config
 
 import (
+	"runtime"
 	"time"
 )
 
@@ -258,4 +259,77 @@ type LoggingConfig struct {
 	MaxSize    string   `yaml:"max_size"`
 	MaxAge     string   `yaml:"max_age"`
 	MaxBackups int      `yaml:"max_backups"`
+}
+
+// MemStats 内存统计信息
+type MemStats struct {
+	Alloc        uint64  // 当前分配的字节数
+	TotalAlloc   uint64  // 累计分配的字节数
+	Sys          uint64  // 从系统获得的字节数
+	Lookups      uint64  // 指针查找次数
+	Mallocs      uint64  // 分配次数
+	Frees        uint64  // 释放次数
+	HeapAlloc    uint64  // 堆分配的字节数
+	HeapSys      uint64  // 堆从系统获得的字节数
+	HeapIdle     uint64  // 堆中空闲的字节数
+	HeapInuse    uint64  // 堆中使用的字节数
+	HeapReleased uint64  // 堆释放给系统的字节数
+	HeapObjects  uint64  // 堆中对象数量
+	StackInuse   uint64  // 栈使用的字节数
+	StackSys     uint64  // 栈从系统获得的字节数
+	MSpanInuse   uint64  // MSpan使用的字节数
+	MSpanSys     uint64  // MSpan从系统获得的字节数
+	MCacheInuse  uint64  // MCache使用的字节数
+	MCacheSys    uint64  // MCache从系统获得的字节数
+	GCSys        uint64  // GC元数据使用的字节数
+	OtherSys     uint64  // 其他系统分配的字节数
+	NextGC       uint64  // 下次GC的目标堆大小
+	LastGC       uint64  // 上次GC的时间戳
+	PauseTotalNs uint64  // GC暂停总时间(纳秒)
+	PauseNs      [256]uint64 // 最近GC暂停时间的循环缓冲区
+	PauseEnd     [256]uint64 // 最近GC暂停结束时间的循环缓冲区
+	NumGC        uint32  // GC次数
+	NumForcedGC  uint32  // 强制GC次数
+	GCCPUFraction float64 // GC使用的CPU时间比例
+	EnableGC     bool    // GC是否启用
+	DebugGC      bool    // 调试GC是否启用
+}
+
+// ReadMemStats 读取内存统计信息
+func ReadMemStats() *MemStats {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	
+	return &MemStats{
+		Alloc:        m.Alloc,
+		TotalAlloc:   m.TotalAlloc,
+		Sys:          m.Sys,
+		Lookups:      m.Lookups,
+		Mallocs:      m.Mallocs,
+		Frees:        m.Frees,
+		HeapAlloc:    m.HeapAlloc,
+		HeapSys:      m.HeapSys,
+		HeapIdle:     m.HeapIdle,
+		HeapInuse:    m.HeapInuse,
+		HeapReleased: m.HeapReleased,
+		HeapObjects:  m.HeapObjects,
+		StackInuse:   m.StackInuse,
+		StackSys:     m.StackSys,
+		MSpanInuse:   m.MSpanInuse,
+		MSpanSys:     m.MSpanSys,
+		MCacheInuse:  m.MCacheInuse,
+		MCacheSys:    m.MCacheSys,
+		GCSys:        m.GCSys,
+		OtherSys:     m.OtherSys,
+		NextGC:       m.NextGC,
+		LastGC:       m.LastGC,
+		PauseTotalNs: m.PauseTotalNs,
+		PauseNs:      m.PauseNs,
+		PauseEnd:     m.PauseEnd,
+		NumGC:        m.NumGC,
+		NumForcedGC:  m.NumForcedGC,
+		GCCPUFraction: m.GCCPUFraction,
+		EnableGC:     m.EnableGC,
+		DebugGC:      m.DebugGC,
+	}
 }
