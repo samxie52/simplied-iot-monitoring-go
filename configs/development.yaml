@@ -27,7 +27,7 @@ kafka:
     timeout: "30s"
   consumer:
     group_id: "iot-consumer-group"
-    auto_offset_reset: "earliest"
+    auto_offset_reset: "latest"
     enable_auto_commit: true
     session_timeout: "30s"
     max_poll_records: 100
@@ -102,7 +102,7 @@ web:
 device:
   simulator:
     enabled: true
-    device_count: 100
+    device_count: 50
     sample_interval: "3s"
     data_variation: 0.1
     anomaly_rate: 0.01
