@@ -369,7 +369,7 @@ func (dsch *DeviceSimulatorConfigHandler) OnConfigChange(event *ConfigChangeEven
 
 	// 应用新配置
 	fmt.Printf("Device simulator config updated: device_count=%d, send_interval=%v\n",
-		newConfig.DeviceCount, newConfig.SendInterval)
+		newConfig.DeviceCount, newConfig.SampleInterval)
 
 	// 这里可以添加设备数量动态调整等逻辑
 
@@ -381,8 +381,8 @@ func (dsch *DeviceSimulatorConfigHandler) validateConfig(cfg *config.DeviceSimul
 	if cfg.DeviceCount <= 0 {
 		return fmt.Errorf("device_count must be positive")
 	}
-	if cfg.SendInterval <= 0 {
-		return fmt.Errorf("send_interval must be positive")
+	if cfg.SampleInterval <= 0 {
+		return fmt.Errorf("sample_interval must be positive")
 	}
 	if cfg.WorkerPoolSize <= 0 {
 		return fmt.Errorf("worker_pool_size must be positive")

@@ -28,7 +28,7 @@ type EnhancedProducerService struct {
 	perfOptimizer    *PerformanceOptimizer
 	
 	// 配置
-	config           *config.Config
+	config           *config.AppConfig
 	
 	// 控制
 	ctx              context.Context
@@ -43,7 +43,7 @@ type EnhancedProducerService struct {
 }
 
 // NewEnhancedProducerService 创建增强的生产者服务
-func NewEnhancedProducerService(cfg *config.Config) (*EnhancedProducerService, error) {
+func NewEnhancedProducerService(cfg *config.AppConfig) (*EnhancedProducerService, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	
 	// 创建Prometheus指标收集器
@@ -86,7 +86,7 @@ func NewEnhancedProducerService(cfg *config.Config) (*EnhancedProducerService, e
 		ctx:            ctx,
 		cancel:         cancel,
 		isRunning:      false,
-		metricsPort:    cfg.Web.MetricsPort,
+		metricsPort:    cfg.Web.Port, // 使用Web端口作为指标端口
 	}
 	
 	// 初始化核心组件
@@ -109,13 +109,11 @@ func (eps *EnhancedProducerService) initializeComponents() error {
 	var err error
 	
 	// 创建连接池
-	eps.connectionPool, err = NewConnectionPool(&ConnectionPoolConfig{
-		MaxConnections:    eps.config.Producer.MaxConnections,
-		MinConnections:    eps.config.Producer.MinConnections,
-		MaxIdleTime:       eps.config.Producer.MaxIdleTime,
-		ConnectionTimeout: eps.config.Producer.ConnectionTimeout,
-		HealthCheckInterval: 30 * time.Second,
-	})
+	eps.connectionPool, err = NewConnectionPool(
+		eps.config.Kafka.Brokers,
+		&eps.config.Kafka.Producer,
+		10, // 默认最大连接数
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create connection pool: %w", err)
 	}
@@ -123,8 +121,8 @@ func (eps *EnhancedProducerService) initializeComponents() error {
 	// 创建Kafka生产者
 	eps.kafkaProducer, err = NewKafkaProducer(
 		eps.config.Kafka.Brokers,
-		eps.config.Producer.Topic,
-		&eps.config.Producer,
+		eps.config.Kafka.Topics.DeviceData, // 使用设备数据主题
+		&eps.config.Kafka.Producer,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka producer: %w", err)
@@ -132,27 +130,22 @@ func (eps *EnhancedProducerService) initializeComponents() error {
 	
 	// 创建批处理器
 	eps.batchProcessor = NewBatchProcessor(
-		&eps.config.Producer,
+		&eps.config.Kafka.Producer,
 		eps.kafkaProducer.producer,
-		eps.config.Producer.PartitionCount,
+		4, // 默认分区数
 	)
 	
 	// 创建工作池
 	eps.workerPool = NewBatchWorkerPool(
-		eps.config.Producer.WorkerPoolSize,
-		eps.config.Producer.QueueSize,
-		eps.config.Producer.WorkerTimeout,
+		10, // 默认工作者数量
+		1000, // 默认队列大小
 	)
 	
 	// 创建设备模拟器
-	eps.deviceSimulator, err = NewDeviceSimulator(
-		&eps.config.Device,
+	eps.deviceSimulator = NewDeviceSimulator(
+		&eps.config.Device.Simulator,
 		eps.kafkaProducer,
-		eps.workerPool,
 	)
-	if err != nil {
-		return fmt.Errorf("failed to create device simulator: %w", err)
-	}
 	
 	return nil
 }
