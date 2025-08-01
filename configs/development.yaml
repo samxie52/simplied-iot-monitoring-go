@@ -2,6 +2,8 @@
 
 # 应用配置 - 开发环境
 app:
+  name: "industrial-iot-monitor"
+  version: "1.0.0"
   environment: "development"
   debug: true
   log_level: "debug"
@@ -15,20 +17,25 @@ kafka:
   producer:
     client_id: "iot-producer-dev"
     batch_size: 1024
-    batch_timeout: "10ms"
+    batch_timeout: "100ms"
     compression_type: "snappy"
     max_retries: 3
     retry_backoff: "100ms"
     required_acks: 1
-    flush_frequency: "10ms"
-    channel_buffer_size: 256
-    timeout: "10s"
+    flush_frequency: "100ms"
+    channel_buffer_size: 10000
+    timeout: "30s"
   consumer:
     group_id: "iot-consumer-group"
     auto_offset_reset: "earliest"
     enable_auto_commit: true
     session_timeout: "30s"
     max_poll_records: 100
+  security:
+    protocol: ""
+    username: ""
+    password: ""
+  timeout: "30s"
 
 # Redis配置 - 开发环境
 redis:
@@ -37,6 +44,8 @@ redis:
   password: "redis123"
   database: 1  # 使用不同的数据库
   pool_size: 10
+  max_retries: 3
+  timeout: "5s"
 
 # 数据库配置 - 开发环境
 database:
@@ -48,44 +57,112 @@ database:
   ssl_mode: "disable"
   max_open_conns: 10
   max_idle_conns: 2
+  conn_max_lifetime: "1h"
 
 # 生产者配置 - 开发环境
 producer:
   device_count: 100  # 较少的设备数量
   send_interval: "3s"
+  data_variance: 0.1
   batch_size: 10
+  retry_attempts: 3
+  timeout: "10s"
 
 # 消费者配置 - 开发环境
 consumer:
   worker_count: 2
   buffer_size: 100
   batch_size: 10
+  processing_timeout: "30s"
+  retry_attempts: 3
+  dead_letter_queue: true
 
 # WebSocket配置 - 开发环境
 websocket:
+  host: "0.0.0.0"
   port: 8081
+  path: "/ws"
   max_connections: 100
+  read_buffer_size: 1024
+  write_buffer_size: 1024
   heartbeat_interval: "15s"
+  connection_timeout: "30s"
 
 # Web配置 - 开发环境
 web:
+  host: "0.0.0.0"
   port: 8080
+  template_path: "./templates"
+  static_path: "./static"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  max_header_bytes: 1048576
 
 # 设备配置 - 开发环境
 device:
   simulator:
+    enabled: true
     device_count: 100
-    send_interval: "3s"
+    sample_interval: "3s"
+    data_variation: 0.1
+    anomaly_rate: 0.01
+    trend_enabled: true
+    trend_strength: 0.05
+    worker_pool_size: 10
+    queue_buffer_size: 1000
+  thresholds:
+    temperature:
+      min: -10.0
+      max: 50.0
+      warning: 40.0
+      critical: 45.0
+    humidity:
+      min: 0.0
+      max: 100.0
+      warning: 80.0
+      critical: 90.0
+    battery:
+      min: 0.0
+      max: 100.0
+      warning: 20.0
+      critical: 10.0
+
+# 告警配置 - 开发环境
+alert:
+  enabled: true
+  channels:
+    - "email"
+    - "webhook"
+  rules:
+    - name: "high_temperature"
+      condition: "temperature > 45"
+      severity: "critical"
+      cooldown: "5m"
+  notifications:
+    email:
+      enabled: false
+      smtp_host: "smtp.gmail.com"
+      smtp_port: 587
+    webhook:
+      enabled: true
+      url: "http://localhost:3000/webhook/alerts"
 
 # 监控配置 - 开发环境
 monitoring:
   prometheus:
     enabled: true
+    host: "0.0.0.0"
     port: 9090
+    path: "/metrics"
+    scrape_interval: "15s"
   logging:
     level: "debug"
     format: "text"  # 开发环境使用文本格式便于阅读
-    output: ["stdout"]
+    output: ["stdout", "file"]
+    file_path: "./logs/app.log"
+    max_size: "100MB"
+    max_age: "7d"
+    max_backups: 10
 
 # 安全配置 - 开发环境
 security:

@@ -18,6 +18,7 @@ bin/
 dist/
 
 # docs/
+debug-demo/
 
 # 测试覆盖率文件
 *.cover

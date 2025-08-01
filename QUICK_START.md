@@ -46,7 +46,17 @@ cd /Users/samxie/dev/simplified-case/simplied-iot-monitoring-go
 # 3. 构建并启动应用
 go mod tidy
 go build -o bin/iot-producer ./cmd/producer
-./bin/iot-producer --config configs/development.yaml
+
+## 显示帮助
+./bin/iot-producer --help
+./bin/iot-producer --config configs/development.yaml  # 只显示帮助
+
+## 启动服务 (正确方式)
+./bin/iot-producer start --config configs/development.yaml --verbose
+
+## 其他有用命令
+./bin/iot-producer status --config configs/development.yaml  # 查看状态
+./bin/iot-producer stop --config configs/development.yaml   # 停止服务
 ```
 
 ## 🔍 验证部署
