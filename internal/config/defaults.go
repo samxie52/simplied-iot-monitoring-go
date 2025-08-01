@@ -21,11 +21,16 @@ func DefaultConfig() *AppConfig {
 				Alerts:     "alerts",
 			},
 			Producer: KafkaProducer{
-				BatchSize:       16384,
-				LingerMs:        10,
-				CompressionType: "snappy",
-				Retries:         3,
-				Timeout:         30 * time.Second,
+				ClientID:         "iot-producer",
+				BatchSize:        16384,
+				BatchTimeout:     10 * time.Millisecond,
+				CompressionType:  "snappy",
+				MaxRetries:       3,
+				RetryBackoff:     100 * time.Millisecond,
+				RequiredAcks:     1,
+				FlushFrequency:   1 * time.Second,
+				ChannelBufferSize: 1000,
+				Timeout:          30 * time.Second,
 			},
 			Consumer: KafkaConsumer{
 				GroupID:          "iot-consumer-group",
@@ -98,10 +103,15 @@ func DefaultConfig() *AppConfig {
 		},
 		Device: DeviceSection{
 			Simulator: DeviceSimulator{
-				Enabled:      true,
-				DeviceCount:  50,
-				SendInterval: 5 * time.Second,
-				DataVariance: 0.1,
+				Enabled:         true,
+				DeviceCount:     50,
+				SampleInterval:  5 * time.Second,
+				DataVariation:   0.1,
+				AnomalyRate:     0.01,
+				TrendEnabled:    true,
+				TrendStrength:   0.1,
+				WorkerPoolSize:  10,
+				QueueBufferSize: 1000,
 			},
 			Thresholds: DeviceThresholds{
 				Temperature: TemperatureThreshold{

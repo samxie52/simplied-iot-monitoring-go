@@ -17,7 +17,7 @@ build/
 bin/
 dist/
 
-docs/
+# docs/
 
 # 测试覆盖率文件
 *.cover

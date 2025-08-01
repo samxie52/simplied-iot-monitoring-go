@@ -55,11 +55,16 @@ type TopicConfig struct {
 
 // KafkaProducer Kafka生产者配置
 type KafkaProducer struct {
-	BatchSize       int           `yaml:"batch_size" validate:"required"`
-	LingerMs        int           `yaml:"linger_ms"`
-	CompressionType string        `yaml:"compression_type" validate:"required"`
-	Retries         int           `yaml:"retries"`
-	Timeout         time.Duration `yaml:"timeout" validate:"required"`
+	ClientID         string        `yaml:"client_id" validate:"required"`
+	BatchSize        int           `yaml:"batch_size" validate:"min=1,max=1000000"`
+	BatchTimeout     time.Duration `yaml:"batch_timeout" validate:"min=1ms"`
+	CompressionType  string        `yaml:"compression_type" validate:"oneof=none gzip snappy lz4 zstd"`
+	MaxRetries       int           `yaml:"max_retries" validate:"min=0,max=10"`
+	RetryBackoff     time.Duration `yaml:"retry_backoff" validate:"min=1ms"`
+	RequiredAcks     int           `yaml:"required_acks" validate:"oneof=-1 0 1"`
+	FlushFrequency   time.Duration `yaml:"flush_frequency" validate:"min=1ms"`
+	ChannelBufferSize int          `yaml:"channel_buffer_size" validate:"min=1"`
+	Timeout          time.Duration `yaml:"timeout" validate:"required"`
 }
 
 // KafkaConsumer Kafka消费者配置
@@ -153,10 +158,15 @@ type DeviceSection struct {
 
 // DeviceSimulator 设备模拟器配置
 type DeviceSimulator struct {
-	Enabled      bool          `yaml:"enabled"`
-	DeviceCount  int           `yaml:"device_count" validate:"required"`
-	SendInterval time.Duration `yaml:"send_interval" validate:"required"`
-	DataVariance float64       `yaml:"data_variance"`
+	Enabled         bool          `yaml:"enabled"`
+	DeviceCount     int           `yaml:"device_count" validate:"min=1,max=100000"`
+	SampleInterval  time.Duration `yaml:"sample_interval" validate:"min=100ms"`
+	DataVariation   float64       `yaml:"data_variation" validate:"min=0,max=1"`
+	AnomalyRate     float64       `yaml:"anomaly_rate" validate:"min=0,max=0.1"`
+	TrendEnabled    bool          `yaml:"trend_enabled"`
+	TrendStrength   float64       `yaml:"trend_strength" validate:"min=0,max=1"`
+	WorkerPoolSize  int           `yaml:"worker_pool_size" validate:"min=1,max=1000"`
+	QueueBufferSize int           `yaml:"queue_buffer_size" validate:"min=100"`
 }
 
 // DeviceThresholds 设备阈值配置
