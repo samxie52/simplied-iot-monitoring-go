@@ -23,8 +23,8 @@ type ConnectionPool struct {
 	isRunning   bool
 }
 
-// HealthChecker 健康检查器
-type HealthChecker struct {
+// ConnectionHealthChecker 连接池健康检查器
+type ConnectionHealthChecker struct {
 	pool        *ConnectionPool
 	producer    *KafkaProducer
 	simulator   *DeviceSimulator
@@ -251,10 +251,10 @@ func (cp *ConnectionPool) GetMetrics() *ConnectionMetrics {
 }
 
 // NewHealthChecker 创建健康检查器
-func NewHealthChecker(pool *ConnectionPool, producer *KafkaProducer, simulator *DeviceSimulator) *HealthChecker {
+func NewHealthChecker(pool *ConnectionPool, producer *KafkaProducer, simulator *DeviceSimulator) *ConnectionHealthChecker {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &HealthChecker{
+	return &ConnectionHealthChecker{
 		pool:          pool,
 		producer:      producer,
 		simulator:     simulator,
@@ -274,7 +274,7 @@ func NewHealthChecker(pool *ConnectionPool, producer *KafkaProducer, simulator *
 }
 
 // Start 启动健康检查
-func (hc *HealthChecker) Start() error {
+func (hc *ConnectionHealthChecker) Start() error {
 	hc.mutex.Lock()
 	defer hc.mutex.Unlock()
 
@@ -289,7 +289,7 @@ func (hc *HealthChecker) Start() error {
 }
 
 // healthCheckLoop 健康检查循环
-func (hc *HealthChecker) healthCheckLoop() {
+func (hc *ConnectionHealthChecker) healthCheckLoop() {
 	ticker := time.NewTicker(hc.checkInterval)
 	defer ticker.Stop()
 
@@ -308,7 +308,7 @@ func (hc *HealthChecker) healthCheckLoop() {
 }
 
 // performHealthCheck 执行健康检查
-func (hc *HealthChecker) performHealthCheck() {
+func (hc *ConnectionHealthChecker) performHealthCheck() {
 	hc.mutex.Lock()
 	defer hc.mutex.Unlock()
 
@@ -336,7 +336,7 @@ func (hc *HealthChecker) performHealthCheck() {
 }
 
 // checkConnectionPool 检查连接池健康状态
-func (hc *HealthChecker) checkConnectionPool() bool {
+func (hc *ConnectionHealthChecker) checkConnectionPool() bool {
 	if hc.pool == nil {
 		hc.healthStatus.Errors = append(hc.healthStatus.Errors, "connection pool is nil")
 		return false
@@ -361,7 +361,7 @@ func (hc *HealthChecker) checkConnectionPool() bool {
 }
 
 // checkKafkaProducer 检查Kafka生产者健康状态
-func (hc *HealthChecker) checkKafkaProducer() bool {
+func (hc *ConnectionHealthChecker) checkKafkaProducer() bool {
 	if hc.producer == nil {
 		hc.healthStatus.Errors = append(hc.healthStatus.Errors, "kafka producer is nil")
 		return false
@@ -382,7 +382,7 @@ func (hc *HealthChecker) checkKafkaProducer() bool {
 }
 
 // checkDeviceSimulator 检查设备模拟器健康状态
-func (hc *HealthChecker) checkDeviceSimulator() bool {
+func (hc *ConnectionHealthChecker) checkDeviceSimulator() bool {
 	if hc.simulator == nil {
 		hc.healthStatus.Errors = append(hc.healthStatus.Errors, "device simulator is nil")
 		return false
@@ -403,7 +403,7 @@ func (hc *HealthChecker) checkDeviceSimulator() bool {
 }
 
 // updateMetrics 更新指标
-func (hc *HealthChecker) updateMetrics() {
+func (hc *ConnectionHealthChecker) updateMetrics() {
 	// 连接池指标
 	if hc.pool != nil {
 		poolMetrics := hc.pool.GetMetrics()
@@ -430,7 +430,7 @@ func (hc *HealthChecker) updateMetrics() {
 }
 
 // GetHealthStatus 获取健康状态
-func (hc *HealthChecker) GetHealthStatus() *config.HealthStatus {
+func (hc *ConnectionHealthChecker) GetHealthStatus() *config.HealthStatus {
 	hc.mutex.RLock()
 	defer hc.mutex.RUnlock()
 
@@ -460,7 +460,7 @@ func (hc *HealthChecker) GetHealthStatus() *config.HealthStatus {
 }
 
 // Stop 停止健康检查
-func (hc *HealthChecker) Stop() error {
+func (hc *ConnectionHealthChecker) Stop() error {
 	hc.mutex.Lock()
 	defer hc.mutex.Unlock()
 
@@ -474,21 +474,21 @@ func (hc *HealthChecker) Stop() error {
 }
 
 // IsRunning 检查健康检查器是否运行中
-func (hc *HealthChecker) IsRunning() bool {
+func (hc *ConnectionHealthChecker) IsRunning() bool {
 	hc.mutex.RLock()
 	defer hc.mutex.RUnlock()
 	return hc.isRunning
 }
 
 // SetCheckInterval 设置检查间隔
-func (hc *HealthChecker) SetCheckInterval(interval time.Duration) {
+func (hc *ConnectionHealthChecker) SetCheckInterval(interval time.Duration) {
 	hc.mutex.Lock()
 	defer hc.mutex.Unlock()
 	hc.checkInterval = interval
 }
 
 // SetTimeout 设置超时时间
-func (hc *HealthChecker) SetTimeout(timeout time.Duration) {
+func (hc *ConnectionHealthChecker) SetTimeout(timeout time.Duration) {
 	hc.mutex.Lock()
 	defer hc.mutex.Unlock()
 	hc.timeout = timeout

@@ -16,7 +16,7 @@ type ProducerService struct {
 	deviceManager  *DeviceManager
 	deviceSimulator *DeviceSimulator
 	connectionPool *ConnectionPool
-	healthChecker  *HealthChecker
+	healthChecker  *ConnectionHealthChecker
 	ctx            context.Context
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
