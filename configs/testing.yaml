@@ -1,135 +1,174 @@
-# Industrial IoT Monitoring System - 测试环境配置
+# Industrial IoT Monitoring System - test配置
 
-# 应用配置 - 测试环境
+# 应用配置 - test
 app:
-  environment: "testing"
-  debug: false
-  log_level: "info"
+  name: "industrial-iot-monitor"
+  version: "1.0.0"
+  environment: "development"
+  debug: true
+  log_level: "debug"
 
-# Kafka配置 - 测试环境
+# Kafka配置 - test
 kafka:
-  brokers: ["localhost:9092"]
+  brokers: ["192.168.5.16:9092"]
   topics:
-    device_data: "device-data-test"
-    alerts: "alerts-test"
+    device_data: "device-data"
+    alerts: "alerts"
   producer:
+    client_id: "iot-producer-dev"
     batch_size: 1024
-    linger_ms: 5
-    retries: 1  # 测试环境快速失败
+    batch_timeout: "10ms"
+    compression_type: "snappy"
+    max_retries: 3
+    retry_backoff: "100ms"
+    required_acks: 1
+    flush_frequency: "10ms"
+    channel_buffer_size: 256
+    timeout: "10s"
   consumer:
-    group_id: "iot-consumer-group-test"
-    session_timeout: "10s"
-    max_poll_records: 50
+    group_id: "iot-consumer-group"
+    auto_offset_reset: "earliest"
+    enable_auto_commit: true
+    session_timeout: "30s"
+    max_poll_records: 100
+  security:
+    protocol: ""
+    username: ""
+    password: ""
+  timeout: "30s"
 
-# Redis配置 - 测试环境
+# Redis配置 - test
 redis:
-  host: "localhost"
+  host: "192.168.5.16"
   port: 6379
-  database: 2  # 使用测试专用数据库
-  pool_size: 3
-  timeout: "3s"
+  password: "redis123"
+  database: 1  # 使用不同的数据库
+  pool_size: 10
+  max_retries: 3
+  timeout: "5s"
 
-# 数据库配置 - 测试环境
+# 数据库配置 - test
 database:
   host: "localhost"
   port: 5432
   username: "postgres"
   password: "postgres"
-  database: "iot_monitor_test"
+  database: "iot_monitor_dev"
   ssl_mode: "disable"
-  max_open_conns: 5
+  max_open_conns: 10
   max_idle_conns: 2
-  conn_max_lifetime: "30m"
+  conn_max_lifetime: "1h"
 
-# 生产者配置 - 测试环境
+# 生产者配置 - test
 producer:
-  device_count: 10  # 测试环境使用很少的设备
-  send_interval: "1s"  # 更快的发送间隔用于测试
-  batch_size: 5
-  retry_attempts: 1
-  timeout: "5s"
+  device_count: 100  # 较少的设备数量
+  send_interval: "3s"
+  data_variance: 0.1
+  batch_size: 10
+  retry_attempts: 3
+  timeout: "10s"
 
-# 消费者配置 - 测试环境
+# 消费者配置 - test
 consumer:
-  worker_count: 1
-  buffer_size: 50
-  batch_size: 5
-  processing_timeout: "10s"
-  retry_attempts: 1
-  dead_letter_queue: false
+  worker_count: 2
+  buffer_size: 100
+  batch_size: 10
+  processing_timeout: "30s"
+  retry_attempts: 3
+  dead_letter_queue: true
 
-# WebSocket配置 - 测试环境
+# WebSocket配置 - test
 websocket:
-  host: "127.0.0.1"
+  host: "0.0.0.0"
   port: 8081
-  max_connections: 10
-  heartbeat_interval: "5s"
-  connection_timeout: "10s"
+  path: "/ws"
+  max_connections: 100
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  heartbeat_interval: "15s"
+  connection_timeout: "30s"
 
-# Web配置 - 测试环境
+# Web配置 - test
 web:
-  host: "127.0.0.1"
+  host: "0.0.0.0"
   port: 8080
-  read_timeout: "5s"
-  write_timeout: "5s"
+  template_path: "./templates"
+  static_path: "./static"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  max_header_bytes: 1048576
 
-# 设备配置 - 测试环境
+# 设备配置 - test
 device:
   simulator:
     enabled: true
-    device_count: 10
-    send_interval: "1s"
-    data_variance: 0.2  # 更大的变化用于测试
+    device_count: 1000
+    sample_interval: "3s"
+    data_variation: 0.1
+    anomaly_rate: 0.01
+    trend_enabled: true
+    trend_strength: 0.05
+    worker_pool_size: 10
+    queue_buffer_size: 1000
   thresholds:
     temperature:
-      min: 0.0
+      min: -10.0
       max: 50.0
       warning: 40.0
       critical: 45.0
     humidity:
-      min: 10.0
-      max: 90.0
-      warning: 75.0
-      critical: 80.0
-    battery:
-      min: 5.0
+      min: 0.0
       max: 100.0
-      warning: 30.0
-      critical: 20.0
+      warning: 80.0
+      critical: 90.0
+    battery:
+      min: 0.0
+      max: 100.0
+      warning: 20.0
+      critical: 10.0
 
-# 告警配置 - 测试环境
+# 告警配置 - test
 alert:
   enabled: true
+  channels:
+    - "email"
+    - "webhook"
   rules:
-    - name: "test_temperature"
+    - name: "high_temperature"
       condition: "temperature > 45"
       severity: "critical"
-      cooldown: "10s"  # 短冷却时间用于测试
-    - name: "test_battery"
-      condition: "battery < 20"
-      severity: "warning"
-      cooldown: "30s"
+      cooldown: "5m"
   notifications:
     email:
       enabled: false
+      smtp_host: "smtp.gmail.com"
+      smtp_port: 587
     webhook:
-      enabled: false
+      enabled: true
+      url: "http://localhost:3000/webhook/alerts"
 
-# 监控配置 - 测试环境
+# 监控配置 - test
 monitoring:
   prometheus:
-    enabled: false  # 测试环境可以禁用Prometheus
+    enabled: true
+    host: "0.0.0.0"
     port: 9090
+    path: "/metrics"
+    scrape_interval: "15s"
   logging:
-    level: "info"
-    format: "text"
-    output: ["stdout"]
+    level: "debug"
+    format: "text"  # test使用文本格式便于阅读
+    output: ["stdout", "file"]
+    file_path: "./logs/app.log"
+    max_size: "100MB"
+    max_age: "7d"
+    max_backups: 10
 
-# 安全配置 - 测试环境
+# 安全配置 - test
 security:
   encryption:
-    enabled: false
+    enabled: false  # test可以禁用加密
   auth:
     enabled: false
   rate_limiting:
-    enabled: false
+    enabled: false  # test禁用限流

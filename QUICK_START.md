@@ -136,6 +136,7 @@ echo $! > .app.pid
 vim configs/development.yaml
 
 # 重启应用以应用新配置
+ps aux | grep producer | grep -v grep
 kill $(cat .app.pid)
 ./bin/iot-producer --config configs/development.yaml &
 ```
