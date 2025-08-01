@@ -130,14 +130,31 @@ type ConsumerSection struct {
 
 // WSSection WebSocket服务配置
 type WSSection struct {
-	Host              string        `yaml:"host" validate:"required"`
-	Port              int           `yaml:"port" validate:"required"`
-	Path              string        `yaml:"path" validate:"required"`
-	MaxConnections    int           `yaml:"max_connections" validate:"required"`
-	ReadBufferSize    int           `yaml:"read_buffer_size" validate:"required"`
-	WriteBufferSize   int           `yaml:"write_buffer_size" validate:"required"`
-	HeartbeatInterval time.Duration `yaml:"heartbeat_interval" validate:"required"`
-	ConnectionTimeout time.Duration `yaml:"connection_timeout" validate:"required"`
+	// 基础配置
+	Enabled           bool          `yaml:"enabled"`
+	Host              string        `yaml:"host" validate:"required_if=Enabled true"`
+	Port              int           `yaml:"port" validate:"required_if=Enabled true"`
+	Path              string        `yaml:"path" validate:"required_if=Enabled true"`
+	
+	// 连接配置
+	MaxConnections    int           `yaml:"max_connections"`
+	ReadBufferSize    int           `yaml:"read_buffer_size"`
+	WriteBufferSize   int           `yaml:"write_buffer_size"`
+	HandshakeTimeout  time.Duration `yaml:"handshake_timeout"`
+	ConnectionTimeout time.Duration `yaml:"connection_timeout"`
+	CheckOrigin       bool          `yaml:"check_origin"`
+	
+	// 数据推送配置
+	QueueSize         int           `yaml:"queue_size"`
+	WorkerCount       int           `yaml:"worker_count"`
+	WriteTimeout      time.Duration `yaml:"write_timeout"`
+	PingInterval      time.Duration `yaml:"ping_interval"`
+	ClientTimeout     time.Duration `yaml:"client_timeout"`
+	MaxMessageSize    int64         `yaml:"max_message_size"`
+	EnableCompression bool          `yaml:"enable_compression"`
+	
+	// 兼容性字段
+	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
 }
 
 // WebSection Web服务配置

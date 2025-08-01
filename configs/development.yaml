@@ -79,14 +79,31 @@ consumer:
 
 # WebSocket配置 - 开发环境
 websocket:
+  # 基础配置
+  enabled: true
   host: "0.0.0.0"
   port: 8081
   path: "/ws"
+  
+  # 连接配置
   max_connections: 100
   read_buffer_size: 1024
   write_buffer_size: 1024
-  heartbeat_interval: "15s"
+  handshake_timeout: "10s"
   connection_timeout: "30s"
+  check_origin: false
+  
+  # 数据推送配置
+  queue_size: 1000
+  worker_count: 4
+  write_timeout: "10s"
+  ping_interval: "54s"
+  client_timeout: "60s"
+  max_message_size: 1048576  # 1MB
+  enable_compression: true
+  
+  # 兼容性字段
+  heartbeat_interval: "15s"
 
 # Web配置 - 开发环境
 web:

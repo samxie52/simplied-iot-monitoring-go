@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"simplied-iot-monitoring-go/internal/config"
+	"simplied-iot-monitoring-go/internal/services/websocket"
 )
 
 // ConsumerService 消费者服务
@@ -26,6 +27,10 @@ type ConsumerService struct {
 
 	// 健康监控
 	healthMonitor *ConsumerHealthMonitor
+
+	// WebSocket集成
+	webSocketServer *websocket.WebSocketServer
+	dataPusher      websocket.DataPusher
 
 	// 控制和状态
 	ctx       context.Context
@@ -67,27 +72,99 @@ func NewConsumerService(cfg *config.AppConfig) (*ConsumerService, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// 创建消息处理器
-	processorConfig := ProcessorConfig{
-		MaxRetries:           3,
-		RetryDelay:           1 * time.Second,
-		ProcessingTimeout:    30 * time.Second,
-		EnableValidation:     true,
-		EnableTransformation: true,
-		EnableCaching:        false,
-		BatchSize:            100,
-		FlushInterval:        5 * time.Second,
+	// 创建WebSocket数据推送器
+	var dataPusher websocket.DataPusher
+	var webSocketServer *websocket.WebSocketServer
+	var messageProcessor MessageProcessor
+	
+	if cfg.WebSocket.Enabled {
+		// 创建数据推送器配置
+		pusherConfig := &websocket.DataPusherConfig{
+			QueueSize:         cfg.WebSocket.QueueSize,
+			WorkerCount:       cfg.WebSocket.WorkerCount,
+			WriteTimeout:      cfg.WebSocket.WriteTimeout,
+			PingInterval:      cfg.WebSocket.PingInterval,
+			ClientTimeout:     cfg.WebSocket.ClientTimeout,
+			MaxMessageSize:    cfg.WebSocket.MaxMessageSize,
+			EnableCompression: cfg.WebSocket.EnableCompression,
+		}
+		
+		// 创建数据推送器
+		dataPusher = websocket.NewWebSocketDataPusher(pusherConfig)
+		
+		// 创建WebSocket服务器配置
+		serverConfig := &websocket.ServerConfig{
+			Host:              cfg.WebSocket.Host,
+			Port:              cfg.WebSocket.Port,
+			Path:              cfg.WebSocket.Path,
+			ReadBufferSize:    cfg.WebSocket.ReadBufferSize,
+			WriteBufferSize:   cfg.WebSocket.WriteBufferSize,
+			HandshakeTimeout:  cfg.WebSocket.HandshakeTimeout,
+			CheckOrigin:       cfg.WebSocket.CheckOrigin,
+			EnableCompression: cfg.WebSocket.EnableCompression,
+			MaxMessageSize:    cfg.WebSocket.MaxMessageSize,
+		}
+		
+		// 创建WebSocket服务器
+		webSocketServer = websocket.NewWebSocketServer(serverConfig, dataPusher)
+		
+		// 创建WebSocket集成消息处理器
+		processorConfig := ProcessorConfig{
+			MaxRetries:           3,
+			RetryDelay:           1 * time.Second,
+			ProcessingTimeout:    30 * time.Second,
+			EnableValidation:     true,
+			EnableTransformation: true,
+			EnableCaching:        false,
+			BatchSize:            100,
+			FlushInterval:        5 * time.Second,
+		}
+		
+		webSocketConfig := &WebSocketProcessorConfig{
+			EnablePush:     true,
+			PushTimeout:    5 * time.Second,
+			AsyncPush:      true,
+			PushRetries:    3,
+			PushRetryDelay: 1 * time.Second,
+		}
+		
+		messageProcessor = NewWebSocketIntegratedProcessor(processorConfig, webSocketConfig, dataPusher)
+		log.Printf("WebSocket集成已启用，服务器地址: %s%s", webSocketServer.GetAddress(), webSocketServer.GetPath())
+	} else {
+		// 创建默认消息处理器
+		processorConfig := ProcessorConfig{
+			MaxRetries:           3,
+			RetryDelay:           1 * time.Second,
+			ProcessingTimeout:    30 * time.Second,
+			EnableValidation:     true,
+			EnableTransformation: true,
+			EnableCaching:        false,
+			BatchSize:            100,
+			FlushInterval:        5 * time.Second,
+		}
+		messageProcessor = NewDefaultMessageProcessor(processorConfig)
+		log.Printf("WebSocket集成已禁用，使用默认消息处理器")
 	}
-	messageProcessor := NewDefaultMessageProcessor(processorConfig)
 
-	// 添加基础验证器和转换器
-	messageProcessor.AddValidator(&BasicMessageValidator{})
-	messageProcessor.AddTransformer(&TimestampTransformer{})
-	messageProcessor.AddTransformer(&PayloadTransformer{})
-
-	// 注册消息处理器
-	messageProcessor.RegisterHandler(NewDeviceDataHandler(nil)) // TODO: 注入实际的设备管理器
-	messageProcessor.RegisterHandler(NewAlertHandler(nil))      // TODO: 注入实际的告警管理器
+	// 添加基础验证器和转换器（仅对DefaultMessageProcessor类型）
+	if defaultProcessor, ok := messageProcessor.(*DefaultMessageProcessor); ok {
+		defaultProcessor.AddValidator(&BasicMessageValidator{})
+		defaultProcessor.AddTransformer(&TimestampTransformer{})
+		defaultProcessor.AddTransformer(&PayloadTransformer{})
+		
+		// 注册消息处理器
+		defaultProcessor.RegisterHandler(NewDeviceDataHandler(nil)) // TODO: 注入实际的设备管理器
+		defaultProcessor.RegisterHandler(NewAlertHandler(nil))      // TODO: 注入实际的告警管理器
+	} else if wsProcessor, ok := messageProcessor.(*WebSocketIntegratedProcessor); ok {
+		// 对WebSocket集成处理器，需要访问其嵌入的DefaultMessageProcessor
+		wsProcessor.DefaultMessageProcessor.AddValidator(&BasicMessageValidator{})
+		wsProcessor.DefaultMessageProcessor.AddTransformer(&TimestampTransformer{})
+		wsProcessor.DefaultMessageProcessor.AddTransformer(&PayloadTransformer{})
+		
+		// 注册消息处理器
+		wsProcessor.DefaultMessageProcessor.RegisterHandler(NewDeviceDataHandler(nil)) // TODO: 注入实际的设备管理器
+		wsProcessor.DefaultMessageProcessor.RegisterHandler(NewAlertHandler(nil))      // TODO: 注入实际的告警管理器
+	}
 
 	// 创建错误处理器
 	errorConfig := ErrorHandlerConfig{
@@ -145,6 +222,8 @@ func NewConsumerService(cfg *config.AppConfig) (*ConsumerService, error) {
 		messageProcessor: messageProcessor,
 		errorHandler:     errorHandler,
 		healthMonitor:    healthMonitor,
+		webSocketServer:  webSocketServer,
+		dataPusher:       dataPusher,
 		metricsCollector: metricsCollector,
 		ctx:              ctx,
 		cancel:           cancel,
@@ -181,6 +260,14 @@ func (cs *ConsumerService) Start() error {
 		}
 	}
 
+	// 启动WebSocket服务器（如果启用）
+	if cs.webSocketServer != nil {
+		if err := cs.webSocketServer.Start(cs.ctx); err != nil {
+			log.Printf("Failed to start WebSocket server: %v", err)
+			// WebSocket服务器启动失败不影响整体服务
+		}
+	}
+
 	// 启动指标收集
 	if cs.metricsCollector != nil {
 		cs.wg.Add(1)
@@ -210,6 +297,13 @@ func (cs *ConsumerService) Stop() error {
 	// 停止Kafka消费者
 	if err := cs.kafkaConsumer.Stop(); err != nil {
 		log.Printf("停止Kafka消费者时发生错误: %v", err)
+	}
+
+	// 停止WebSocket服务器（如果启用）
+	if cs.webSocketServer != nil {
+		if err := cs.webSocketServer.Stop(); err != nil {
+			log.Printf("Failed to stop WebSocket server: %v", err)
+		}
 	}
 
 	// 停止Prometheus指标收集器
