@@ -36,23 +36,7 @@ type DataPusher interface {
 	Stop() error
 }
 
-// Client WebSocket客户端
-type Client struct {
-	ID       string
-	Conn     *websocket.Conn
-	Send     chan []byte
-	Filter   *ClientFilter
-	LastSeen time.Time
-	mutex    sync.RWMutex
-}
 
-// ClientFilter 客户端过滤器
-type ClientFilter struct {
-	DeviceIDs   map[string]bool `json:"device_ids,omitempty"`
-	DeviceTypes map[string]bool `json:"device_types,omitempty"`
-	Locations   map[string]bool `json:"locations,omitempty"`
-	AlertLevels map[string]bool `json:"alert_levels,omitempty"`
-}
 
 // WebSocketDataPusher WebSocket数据推送器实现
 type WebSocketDataPusher struct {

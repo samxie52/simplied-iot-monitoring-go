@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket连接测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .message-log {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket连接测试</h1>
+    
+    <div id="status" class="status disconnected">
+        状态: 未连接
+    </div>
+    
+    <div>
+        <button id="connectBtn" onclick="connect()">连接</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>断开</button>
+        <button onclick="sendPing()">发送Ping</button>
+        <button onclick="clearLog()">清空日志</button>
+    </div>
+    
+    <h3>消息日志:</h3>
+    <div id="messageLog" class="message-log"></div>
+    
+    <h3>统计信息:</h3>
+    <div id="stats">
+        <p>接收消息数: <span id="receivedCount">0</span></p>
+        <p>发送消息数: <span id="sentCount">0</span></p>
+        <p>连接时间: <span id="connectionTime">-</span></p>
+    </div>
+
+    <script>
+        let ws = null;
+        let receivedCount = 0;
+        let sentCount = 0;
+        let connectionStartTime = null;
+
+        function log(message) {
+            const messageLog = document.getElementById('messageLog');
+            const timestamp = new Date().toLocaleTimeString();
+            messageLog.innerHTML += `[${timestamp}] ${message}\n`;
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connected) {
+                statusDiv.textContent = '状态: 已连接';
+                statusDiv.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                statusDiv.textContent = '状态: 未连接';
+                statusDiv.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('receivedCount').textContent = receivedCount;
+            document.getElementById('sentCount').textContent = sentCount;
+            
+            if (connectionStartTime) {
+                const duration = Math.floor((Date.now() - connectionStartTime) / 1000);
+                document.getElementById('connectionTime').textContent = `${duration}秒`;
+            }
+        }
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('WebSocket已经连接');
+                return;
+            }
+
+            const wsUrl = 'ws://localhost:8080/ws';
+            log(`正在连接到: ${wsUrl}`);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                log('WebSocket连接成功');
+                updateStatus(true);
+                connectionStartTime = Date.now();
+                updateStats();
+            };
+            
+            ws.onmessage = function(event) {
+                receivedCount++;
+                updateStats();
+                
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`收到消息: ${JSON.stringify(data, null, 2)}`);
+                } catch (error) {
+                    log(`收到原始消息: ${event.data}`);
+                }
+            };
+            
+            ws.onclose = function(event) {
+                log(`WebSocket连接关闭: code=${event.code}, reason=${event.reason}`);
+                updateStatus(false);
+                connectionStartTime = null;
+                updateStats();
+            };
+            
+            ws.onerror = function(error) {
+                log(`WebSocket错误: ${error}`);
+                updateStatus(false);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendPing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const pingMessage = {
+                    type: 'ping',
+                    timestamp: Date.now()
+                };
+                ws.send(JSON.stringify(pingMessage));
+                sentCount++;
+                updateStats();
+                log(`发送Ping: ${JSON.stringify(pingMessage)}`);
+            } else {
+                log('WebSocket未连接，无法发送消息');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('messageLog').innerHTML = '';
+        }
+
+        // 页面加载时自动连接
+        window.onload = function() {
+            log('页面加载完成，准备测试WebSocket连接');
+        };
+    </script>
+</body>
+</html>

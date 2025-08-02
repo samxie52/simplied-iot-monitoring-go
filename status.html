@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统状态检查</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>IoT Dashboard 系统状态检查</h1>
+    
+    <h2>1. Web服务器状态</h2>
+    <div id="server-status" class="status info">检查中...</div>
+    
+    <h2>2. Chart.js 加载状态</h2>
+    <div id="chart-status" class="status info">检查中...</div>
+    
+    <h2>3. WebSocket 连接状态</h2>
+    <div id="websocket-status" class="status info">检查中...</div>
+    
+    <h2>4. 详细信息</h2>
+    <pre id="details"></pre>
+    
+    <script>
+        const details = document.getElementById('details');
+        
+        function log(message) {
+            details.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            console.log(message);
+        }
+        
+        function updateStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = 'status ' + type;
+        }
+        
+        // 检查Web服务器
+        fetch('http://localhost:8090/static/libs/chart-test.js')
+            .then(response => {
+                if (response.ok) {
+                    updateStatus('server-status', '✅ Web服务器正常运行', 'success');
+                    log('Web服务器状态: 正常');
+                } else {
+                    updateStatus('server-status', '❌ Web服务器响应异常: ' + response.status, 'error');
+                    log('Web服务器状态: 异常 - ' + response.status);
+                }
+            })
+            .catch(error => {
+                updateStatus('server-status', '❌ 无法连接到Web服务器', 'error');
+                log('Web服务器状态: 连接失败 - ' + error.message);
+            });
+        
+        // 检查Chart.js
+        setTimeout(() => {
+            if (typeof Chart !== 'undefined') {
+                updateStatus('chart-status', '✅ Chart.js 加载成功 (版本: ' + (Chart.version || '未知') + ')', 'success');
+                log('Chart.js状态: 加载成功');
+            } else {
+                updateStatus('chart-status', '❌ Chart.js 未加载', 'error');
+                log('Chart.js状态: 未加载');
+            }
+        }, 1000);
+        
+        // 检查WebSocket
+        try {
+            const ws = new WebSocket('ws://localhost:8090/ws');
+            ws.onopen = function() {
+                updateStatus('websocket-status', '✅ WebSocket 连接成功', 'success');
+                log('WebSocket状态: 连接成功');
+                ws.close();
+            };
+            ws.onerror = function(error) {
+                updateStatus('websocket-status', '❌ WebSocket 连接失败', 'error');
+                log('WebSocket状态: 连接失败 - ' + error);
+            };
+        } catch (error) {
+            updateStatus('websocket-status', '❌ WebSocket 不支持', 'error');
+            log('WebSocket状态: 不支持 - ' + error.message);
+        }
+        
+        log('系统状态检查开始');
+    </script>
+    
+    <!-- 加载Chart.js测试文件 -->
+    <script src="http://localhost:8090/static/libs/chart-test.js"></script>
+</body>
+</html>

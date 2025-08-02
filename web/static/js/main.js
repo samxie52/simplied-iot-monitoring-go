@@ -1,149 +1,139 @@
-// Industrial IoT Monitoring System - Frontend JavaScript
-// 工业IoT监控系统前端JavaScript
+// Industrial IoT Monitoring System - Main Entry Point
+// 工业IoT监控系统主入口
 
-let ws = null;
-let isConnected = false;
-let deviceData = new Map();
-let messageCount = 0;
-let alertCount = 0;
+// 全局变量
+let dashboard = null;
 
-function toggleConnection() {
-    if (isConnected) {
-        disconnect();
-    } else {
-        connect();
-    }
-}
-
-function connect() {
-    const wsUrl = 'ws://localhost:8080/ws';
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = function() {
-        isConnected = true;
-        updateConnectionStatus();
-        console.log('WebSocket连接已建立');
-    };
-
-    ws.onmessage = function(event) {
+// 初始化图表的函数
+function initializeCharts() {
+    console.log('初始化聚合统计图表...');
+    if (dashboard && typeof AggregatedChart !== 'undefined' && typeof echarts !== 'undefined') {
         try {
-            const device = JSON.parse(event.data);
-            updateDeviceData(device);
-            messageCount++;
-            updateStats();
+            // 初始化聚合图表
+            dashboard.temperatureChart = new AggregatedChart('temperature-chart', {
+                title: '温度聚合趋势',
+                yAxisName: '温度',
+                unit: '°C'
+            });
+            dashboard.humidityChart = new AggregatedChart('humidity-chart', {
+                title: '湿度聚合趋势',
+                yAxisName: '湿度',
+                unit: '%'
+            });
+            dashboard.pressureChart = new AggregatedChart('pressure-chart', {
+                title: '压力聚合趋势',
+                yAxisName: '压力',
+                unit: 'hPa'
+            });
+            
+            console.log('聚合统计图表初始化成功!');
         } catch (error) {
-            console.error('解析消息失败:', error);
+            console.error('聚合统计图表初始化失败:', error);
         }
-    };
-
-    ws.onclose = function() {
-        isConnected = false;
-        updateConnectionStatus();
-        console.log('WebSocket连接已关闭');
-    };
-
-    ws.onerror = function(error) {
-        console.error('WebSocket错误:', error);
-        isConnected = false;
-        updateConnectionStatus();
-    };
-}
-
-function disconnect() {
-    if (ws) {
-        ws.close();
-    }
-}
-
-function updateConnectionStatus() {
-    const statusElement = document.getElementById('ws-status');
-    const buttonElement = document.getElementById('connect-btn');
-    
-    if (isConnected) {
-        statusElement.textContent = '已连接';
-        statusElement.className = 'connected';
-        buttonElement.textContent = '断开连接';
     } else {
-        statusElement.textContent = '未连接';
-        statusElement.className = 'disconnected';
-        buttonElement.textContent = '连接WebSocket';
+        console.warn('聚合统计图表初始化条件不满足:', {
+            dashboard: !!dashboard,
+            AggregatedChart: typeof AggregatedChart !== 'undefined',
+            echarts: typeof echarts !== 'undefined'
+        });
     }
 }
 
-function updateDeviceData(device) {
-    deviceData.set(device.device_id, device);
+// 主初始化函数页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Industrial IoT Monitoring Dashboard 正在启动...');
     
-    // 检查告警条件
-    if (device.temperature > 45 || device.temperature < 5 || 
-        device.humidity > 80 || device.humidity < 20 || 
-        device.battery_level < 20 || device.status === '故障') {
-        alertCount++;
-    }
+    // 延迟检查ECharts加载情况，给脚本加载时间
+    setTimeout(function() {
+        console.log('检查ECharts状态...');
+        console.log('typeof echarts:', typeof echarts);
+        console.log('window.echarts:', window.echarts);
+        
+        if (typeof echarts === 'undefined') {
+            console.warn('ECharts 未加载，图表功能将被禁用');
+            console.log('当前已加载的脚本:');
+            document.querySelectorAll('script').forEach((script, index) => {
+                console.log(`Script ${index}: ${script.src || 'inline'}`);
+            });
+        } else {
+            console.log('ECharts 加载成功, 版本:', echarts.version);
+            // 初始化图表
+            initializeCharts();
+        }
+    }, 500); // 等待500ms
     
-    renderDeviceList();
-}
-
-function renderDeviceList() {
-    const container = document.getElementById('device-container');
-    
-    if (deviceData.size === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #7f8c8d;">等待设备数据...</p>';
+    // 检查其他依赖，但不阻止初始化
+    if (typeof WebSocketClient === 'undefined') {
+        console.error('WebSocketClient 未加载');
         return;
     }
-
-    let html = '';
-    deviceData.forEach((device, deviceId) => {
-        const statusClass = getStatusClass(device.status);
-        const timeAgo = getTimeAgo(new Date(device.timestamp));
-        
-        html += `
-            <div class="device-item">
-                <div class="device-info">
-                    <div class="device-name">${device.device_id} - ${device.device_type}</div>
-                    <div class="device-location">📍 ${device.location} | 🕒 ${timeAgo}</div>
-                    <div style="margin-top: 5px; font-size: 0.9em;">
-                        🌡️ ${device.temperature.toFixed(1)}°C | 
-                        💧 ${device.humidity.toFixed(1)}% | 
-                        🔋 ${device.battery_level.toFixed(1)}%
-                    </div>
-                </div>
-                <div class="device-status ${statusClass}">${device.status}</div>
-            </div>
-        `;
-    });
     
-    container.innerHTML = html;
-}
-
-function getStatusClass(status) {
-    switch (status) {
-        case '正常': return 'status-normal';
-        case '警告': return 'status-warning';
-        case '故障': return 'status-error';
-        default: return 'status-normal';
+    if (typeof AggregatedChart === 'undefined') {
+        console.warn('AggregatedChart 未加载，图表功能将被禁用');
     }
-}
-
-function getTimeAgo(date) {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSecs = Math.floor(diffMs / 1000);
     
-    if (diffSecs < 60) return `${diffSecs}秒前`;
-    if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}分钟前`;
-    return `${Math.floor(diffSecs / 3600)}小时前`;
-}
-
-function updateStats() {
-    document.getElementById('online-devices').textContent = deviceData.size;
-    document.getElementById('messages-per-sec').textContent = Math.floor(messageCount / 60); // 简化计算
-    document.getElementById('alert-count').textContent = alertCount;
-}
-
-// 定期更新统计信息
-setInterval(updateStats, 1000);
-
-// 页面加载完成后自动连接
-window.addEventListener('load', function() {
-    setTimeout(connect, 1000);
+    if (typeof Dashboard === 'undefined') {
+        console.error('Dashboard 未加载');
+        return;
+    }
+    
+    try {
+        // 创建仪表板实例
+        dashboard = new Dashboard();
+        
+        console.log('Industrial IoT Monitoring Dashboard 启动成功');
+        
+        // 显示启动成功消息
+        showStartupMessage();
+        
+    } catch (error) {
+        console.error('仪表板初始化失败:', error);
+        showErrorMessage('仪表板初始化失败: ' + error.message);
+    }
 });
+
+// 显示启动消息
+function showStartupMessage() {
+    console.log('🚀 Industrial IoT Monitoring Dashboard');
+    console.log('📊 实时数据可视化系统已就绪');
+    console.log('🔌 点击连接按钮开始监控设备数据');
+}
+
+// 显示错误消息
+function showErrorMessage(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ef4444;
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        z-index: 9999;
+        max-width: 400px;
+    `;
+    errorDiv.textContent = message;
+    
+    document.body.appendChild(errorDiv);
+    
+    // 5秒后自动移除
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 5000);
+}
+
+// 页面卸载时清理资源
+window.addEventListener('beforeunload', function() {
+    if (dashboard && dashboard.wsClient) {
+        dashboard.wsClient.disconnect();
+    }
+    
+    if (dashboard && dashboard.chartManager) {
+        dashboard.chartManager.destroyAll();
+    }
+});
+
+// 导出全局访问
+window.dashboard = dashboard;
+

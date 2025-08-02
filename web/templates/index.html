@@ -1,0 +1,221 @@
+{{define "index"}}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial IoT Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        // ECharts加载检查
+        window.addEventListener('load', function() {
+            if (typeof echarts !== 'undefined') {
+                console.log('ECharts加载成功，版本:', echarts.version);
+            } else {
+                console.warn('ECharts加载失败');
+            }
+            
+            // AggregatedChart加载检查
+            setTimeout(function() {
+                if (typeof AggregatedChart !== 'undefined') {
+                    console.log('AggregatedChart加载成功');
+                } else {
+                    console.warn('AggregatedChart加载失败');
+                }
+            }, 100);
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- 顶部导航栏 -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-industry"></i> Industrial IoT Monitoring</h1>
+                <div class="connection-status">
+                    <span id="connection-indicator" class="status-indicator offline"></span>
+                    <span id="connection-text">离线</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="stats-summary">
+                    <div class="stat-item">
+                        <span class="stat-label">设备数量</span>
+                        <span id="device-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">消息数量</span>
+                        <span id="message-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">告警数量</span>
+                        <span id="alert-count" class="stat-value">0</span>
+                    </div>
+                </div>
+                <button id="connect-btn" class="connect-btn">
+                    <i class="fas fa-plug"></i> 连接
+                </button>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="dashboard-main">
+            <!-- 左侧控制面板 -->
+            <aside class="control-panel">
+                <div class="panel-section">
+                    <h3><i class="fas fa-filter"></i> 数据过滤</h3>
+                    <div class="filter-group">
+                        <label>设备类型</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="temperature" checked> 温度传感器</label>
+                            <label><input type="checkbox" value="humidity" checked> 湿度传感器</label>
+                            <label><input type="checkbox" value="pressure" checked> 压力传感器</label>
+                            <label><input type="checkbox" value="switch" checked> 开关设备</label>
+                            <label><input type="checkbox" value="current" checked> 电流传感器</label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>建筑位置</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="Building_1" checked> Building 1</label>
+                            <label><input type="checkbox" value="Building_2" checked> Building 2</label>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>楼层</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="1" checked> 1楼</label>
+                            <label><input type="checkbox" value="2" checked> 2楼</label>
+                            <label><input type="checkbox" value="3" checked> 3楼</label>
+                        </div>
+                    </div>
+
+                    <button id="apply-filters" class="apply-btn">
+                        <i class="fas fa-check"></i> 应用过滤器
+                    </button>
+                </div>
+
+                <div class="panel-section">
+                    <h3><i class="fas fa-bell"></i> 告警级别</h3>
+                    <div class="alert-filters">
+                        <label><input type="checkbox" value="critical" checked> 严重</label>
+                        <label><input type="checkbox" value="warning" checked> 警告</label>
+                        <label><input type="checkbox" value="info" checked> 信息</label>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 中央图表区域 -->
+            <section class="charts-container">
+                <div class="chart-grid">
+                    <!-- 温度趋势图 -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-thermometer-half"></i> 温度趋势</h3>
+                            <div class="chart-controls">
+                                <button class="chart-btn" data-range="1h">1小时</button>
+                                <button class="chart-btn active" data-range="6h">6小时</button>
+                                <button class="chart-btn" data-range="24h">24小时</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div id="temperature-chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 湿度趋势图 -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-tint"></i> 湿度趋势</h3>
+                            <div class="chart-controls">
+                                <button class="chart-btn" data-range="1h">1小时</button>
+                                <button class="chart-btn active" data-range="6h">6小时</button>
+                                <button class="chart-btn" data-range="24h">24小时</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div id="humidity-chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 压力趋势图 -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-gauge"></i> 压力趋势</h3>
+                            <div class="chart-controls">
+                                <button class="chart-btn" data-range="1h">1小时</button>
+                                <button class="chart-btn active" data-range="6h">6小时</button>
+                                <button class="chart-btn" data-range="24h">24小时</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div id="pressure-chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- 设备状态分布 -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-chart-pie"></i> 设备状态分布</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div id="status-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧信息面板 -->
+            <aside class="info-panel">
+                <div class="panel-section">
+                    <h3><i class="fas fa-exclamation-triangle"></i> 实时告警</h3>
+                    <div id="alerts-list" class="alerts-list">
+                        <div class="no-alerts">暂无告警</div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3><i class="fas fa-list"></i> 最新设备数据</h3>
+                    <div id="recent-data" class="recent-data">
+                        <div class="no-data">暂无数据</div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3><i class="fas fa-chart-line"></i> 系统统计</h3>
+                    <div class="system-stats">
+                        <div class="stat-row">
+                            <span>在线设备:</span>
+                            <span id="online-devices">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>离线设备:</span>
+                            <span id="offline-devices">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>数据速率:</span>
+                            <span id="data-rate">0 msg/s</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>平均延迟:</span>
+                            <span id="avg-latency">0 ms</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- 加载JavaScript -->
+    <script src="/static/js/websocket-client.js"></script>
+    <script src="/static/js/echarts-aggregated.js?v=10"></script>
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+{{end}}
