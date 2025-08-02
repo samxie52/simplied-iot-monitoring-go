@@ -62,7 +62,7 @@ temp/
 *.sqlite3
 
 # Docker相关
-.dockerignore
+# .dockerignore 应该被提交到版本控制
 
 # 依赖目录
 vendor/

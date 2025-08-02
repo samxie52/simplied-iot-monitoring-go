@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # Kafka服务（用于测试）
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # Redis服务
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL服务
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: iot_monitoring
+      POSTGRES_USER: iot_user
+      POSTGRES_PASSWORD: iot_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot_user -d iot_monitoring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # IoT生产者服务
+  producer:
+    image: localhost:5000/simplied-iot-monitoring-go-producer:ec5a372-dirty
+    container_name: iot-producer
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVICE_NAME=producer
+      - LOG_LEVEL=info
+      - CONFIG_PATH=/app/configs/development.yaml
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro
+    restart: unless-stopped
+
+  # IoT消费者服务
+  consumer:
+    image: localhost:5000/simplied-iot-monitoring-go-consumer:ec5a372-dirty
+    container_name: iot-consumer
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVICE_NAME=consumer
+      - LOG_LEVEL=info
+      - CONFIG_PATH=/app/configs/development.yaml
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro
+    restart: unless-stopped
+
+  # WebSocket服务
+  websocket:
+    image: localhost:5000/simplied-iot-monitoring-go-websocket:ec5a372-dirty
+    container_name: iot-websocket
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVICE_NAME=websocket
+      - LOG_LEVEL=info
+      - CONFIG_PATH=/app/configs/development.yaml
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro
+    restart: unless-stopped
+
+  # Web监控界面
+  web:
+    image: localhost:5000/simplied-iot-monitoring-go-web:ec5a372-dirty
+    container_name: iot-web
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVICE_NAME=web
+      - LOG_LEVEL=info
+      - CONFIG_PATH=/app/configs/development.yaml
+    depends_on:
+      - websocket
+    volumes:
+      - ./configs:/app/configs:ro
+    restart: unless-stopped
+
+networks:
+  default:
+    name: iot-monitoring-network

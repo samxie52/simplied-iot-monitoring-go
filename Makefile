@@ -51,7 +51,12 @@ help:
 	@echo "  test-coverage        生成测试覆盖率报告"
 	@echo ""
 	@echo "Docker Commands:"
-	@echo "  docker-build         构建Docker镜像"
+	@echo "  docker-build         构建所有Docker镜像"
+	@echo "  docker-build-producer    构建生产者服务镜像"
+	@echo "  docker-build-consumer    构建消费者服务镜像"
+	@echo "  docker-build-websocket   构建 WebSocket服务镜像"
+	@echo "  docker-build-web         构建 Web服务镜像"
+	@echo "  docker-build-service     构建指定服务镜像 (SERVICE=xxx)"
 	@echo "  docker-up            启动Docker服务"
 	@echo "  docker-down          停止Docker服务"
 	@echo ""
@@ -192,10 +197,69 @@ run-web:
 
 # Docker相关
 .PHONY: docker-build
-docker-build:
-	@echo "🐳 构建Docker镜像..."
-	docker build -t $(DOCKER_REGISTRY)/$(PROJECT_NAME):$(DOCKER_TAG) .
-	@echo "✅ Docker镜像构建完成"
+docker-build: docker-build-producer docker-build-consumer docker-build-websocket docker-build-web
+	@echo "🎉 所有Docker镜像构建完成"
+
+# 构建单个服务Docker镜像
+.PHONY: docker-build-producer
+docker-build-producer:
+	@echo "🐳 构建生产者服务Docker镜像..."
+	docker build --target producer \
+		--build-arg SERVICE=producer \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--build-arg GIT_COMMIT="$(shell git rev-parse HEAD 2>/dev/null || echo 'unknown')" \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME)-producer:$(DOCKER_TAG) .
+	@echo "✅ 生产者服务Docker镜像构建完成"
+
+.PHONY: docker-build-consumer
+docker-build-consumer:
+	@echo "🐳 构建消费者服务Docker镜像..."
+	docker build --target consumer \
+		--build-arg SERVICE=consumer \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--build-arg GIT_COMMIT="$(shell git rev-parse HEAD 2>/dev/null || echo 'unknown')" \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME)-consumer:$(DOCKER_TAG) .
+	@echo "✅ 消费者服务Docker镜像构建完成"
+
+.PHONY: docker-build-websocket
+docker-build-websocket:
+	@echo "🐳 构建 WebSocket服务Docker镜像..."
+	docker build --target websocket \
+		--build-arg SERVICE=websocket \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--build-arg GIT_COMMIT="$(shell git rev-parse HEAD 2>/dev/null || echo 'unknown')" \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME)-websocket:$(DOCKER_TAG) .
+	@echo "✅ WebSocket服务Docker镜像构建完成"
+
+.PHONY: docker-build-web
+docker-build-web:
+	@echo "🐳 构建 Web服务Docker镜像..."
+	docker build --target web \
+		--build-arg SERVICE=web \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--build-arg GIT_COMMIT="$(shell git rev-parse HEAD 2>/dev/null || echo 'unknown')" \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME)-web:$(DOCKER_TAG) .
+	@echo "✅ Web服务Docker镜像构建完成"
+
+# 构建通用Docker镜像（可指定服务类型）
+.PHONY: docker-build-service
+docker-build-service:
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "❌ 请指定服务类型: make docker-build-service SERVICE=producer"; \
+		exit 1; \
+	fi
+	@echo "🐳 构建 $(SERVICE) 服务Docker镜像..."
+	docker build --target $(SERVICE) \
+		--build-arg SERVICE=$(SERVICE) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--build-arg GIT_COMMIT="$(shell git rev-parse HEAD 2>/dev/null || echo 'unknown')" \
+		-t $(DOCKER_REGISTRY)/$(PROJECT_NAME)-$(SERVICE):$(DOCKER_TAG) .
+	@echo "✅ $(SERVICE) 服务Docker镜像构建完成"
 
 .PHONY: docker-up
 docker-up:
