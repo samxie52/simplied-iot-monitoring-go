@@ -68,37 +68,36 @@
 
 ```mermaid
 graph TB
-    subgraph "📱 设备数据模拟层"
-        SIMULATOR[🏭 设备数据模拟器<br/>支持 1000+ 设备同时模拟]
-        DEV_TYPES[🌡️ 温度 | 💧 湿度 | 🔋 压力 | ⚡ 电流 | 🔘 开关]
+    subgraph DeviceLayer["设备数据模拟层"]
+        SIMULATOR["设备数据模拟器<br/>支持1000+设备同时模拟"]
+        DEV_TYPES["多传感器类型<br/>温度|湿度|压力|电流|开关"]
     end
     
-    subgraph "🚀 核心服务层 (三个独立服务)"
-        PRODUCER[🏗️ Kafka 生产者服务<br/>- 设备数据生成<br/>- 高性能批量发送<br/>- 零拷贝优化]
-        CONSUMER[📊 Kafka 消费者服务<br/>- 实时数据处理<br/>- 数据验证和转换<br/>- 告警检测引擎]
-        WEBSERVICE[🌐 Web 服务<br/>- WebSocket 实时通信<br/>- 数据可视化界面<br/>- 1000+ 并发连接支持]
+    subgraph ServiceLayer["核心服务层"]
+        PRODUCER["Kafka生产者服务<br/>设备数据生成<br/>高性能批量发送"]
+        CONSUMER["Kafka消费者服务<br/>实时数据处理<br/>告警检测引擎"]
+        WEBSERVICE["Web服务<br/>WebSocket实时通信<br/>数据可视化界面"]
     end
     
-    subgraph "💾 消息中间件"
-        KAFKA[📨 Apache Kafka<br/>高吐吐量消息队列]
-        TOPIC1[device-data Topic<br/>设备数据主题]
-        TOPIC2[alerts Topic<br/>告警消息主题]
+    subgraph MessageLayer["消息中间件"]
+        KAFKA["Apache Kafka<br/>高吞吐量消息队列"]
+        TOPIC1["device-data Topic"]
+        TOPIC2["alerts Topic"]
     end
     
-    subgraph "📊 实时数据展示"
-        DASHBOARD[🖥️ 实时监控仪表板]
-        ECHARTS[📈 ECharts 聚合图表<br/>- 30秒时间窗口聚合<br/>- 平均值/最大值/最小值<br/>- 设备数量统计]
-        STATUS_PIE[🍰 设备状态饼图<br/>在线/离线状态分布]
+    subgraph DisplayLayer["实时数据展示"]
+        DASHBOARD["实时监控仪表板"]
+        ECHARTS["ECharts聚合图表<br/>30秒时间窗口聚合"]
+        STATUS_PIE["设备状态饼图<br/>在线离线状态分布"]
     end
     
-    subgraph "🔍 监控和存储"
-        PROMETHEUS[📈 Prometheus<br/>指标收集和监控]
-        GRAFANA[📊 Grafana<br/>监控仪表板]
-        REDIS[⚡ Redis<br/>高性能缓存]
-        POSTGRES[💾 PostgreSQL<br/>数据持久化]
+    subgraph StorageLayer["监控和存储"]
+        PROMETHEUS["Prometheus<br/>指标收集和监控"]
+        GRAFANA["Grafana<br/>监控仪表板"]
+        REDIS["Redis<br/>高性能缓存"]
+        POSTGRES["PostgreSQL<br/>数据持久化"]
     end
     
-    %% 数据流向
     SIMULATOR --> PRODUCER
     PRODUCER --> KAFKA
     KAFKA --> TOPIC1
@@ -119,54 +118,44 @@ graph TB
     CONSUMER --> PROMETHEUS
     WEBSERVICE --> PROMETHEUS
     PROMETHEUS --> GRAFANA
-    
-    %% 样式
-    classDef serviceBox fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef dataBox fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef storageBox fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    
-    class PRODUCER,CONSUMER,WEBSERVICE serviceBox
-    class KAFKA,TOPIC1,TOPIC2 dataBox
-    class REDIS,POSTGRES,PROMETHEUS,GRAFANA storageBox
 ```
 
 ## 🔄 实时数据处理流程
 
 ```mermaid
-flowchart LR
-    subgraph "🏭 设备数据模拟"
-        SIM[🔄 设备数据模拟器<br/>1000+ 设备同时模拟]
-        TYPES[🌡️ 温度 | 💧 湿度 | 🔋 压力<br/>⚡ 电流 | 🔘 开关状态]
+graph LR
+    subgraph DeviceSimulation["设备数据模拟"]
+        SIM["设备数据模拟器<br/>1000+设备同时模拟"]
+        TYPES["多传感器类型<br/>温度|湿度|压力|电流|开关"]
     end
     
-    subgraph "🚀 生产者服务"
-        PROD[🏗️ Kafka Producer<br/>- 数据生成和验证<br/>- 高性能批量发送<br/>- 零拷贝优化]
+    subgraph ProducerService["生产者服务"]
+        PROD["Kafka Producer<br/>数据生成和验证<br/>高性能批量发送"]
     end
     
-    subgraph "📨 Kafka 消息队列"
-        KAFKA_CLUSTER[📨 Kafka Cluster]
-        TOPIC_DATA[device-data Topic<br/>设备数据主题]
-        TOPIC_ALERT[alerts Topic<br/>告警消息主题]
+    subgraph KafkaCluster["Kafka消息队列"]
+        KAFKA_CLUSTER["Kafka Cluster"]
+        TOPIC_DATA["device-data Topic"]
+        TOPIC_ALERT["alerts Topic"]
     end
     
-    subgraph "📊 消费者服务"
-        CONS[📊 Kafka Consumer<br/>- 实时数据处理<br/>- 数据验证和转换<br/>- 告警检测引擎]
-        AGG[📈 数据聚合引擎<br/>30秒时间窗口]
-        ALERT[🚨 告警检测<br/>阈值检测和告警生成]
+    subgraph ConsumerService["消费者服务"]
+        CONS["Kafka Consumer<br/>实时数据处理<br/>告警检测引擎"]
+        AGG["数据聚合引擎<br/>30秒时间窗口"]
+        ALERT["告警检测<br/>阈值检测和告警生成"]
     end
     
-    subgraph "🌐 Web 服务"
-        WS_HUB[🌐 WebSocket Hub<br/>- 1000+ 并发连接<br/>- 智能连接管理<br/>- 实时消息广播]
-        WEB_UI[🖥️ Web 界面<br/>- 实时数据展示<br/>- ECharts 图表<br/>- 响应式设计]
+    subgraph WebService["Web服务"]
+        WS_HUB["WebSocket Hub<br/>1000+并发连接<br/>实时消息广播"]
+        WEB_UI["Web界面<br/>实时数据展示<br/>ECharts图表"]
     end
     
-    subgraph "📊 实时可视化"
-        CHART_AGG[📈 聚合数据图表<br/>平均值/最大值/最小值]
-        CHART_PIE[🍰 设备状态饼图<br/>在线/离线状态]
-        ALERT_UI[🚨 实时告警面板<br/>告警消息展示]
+    subgraph Visualization["实时可视化"]
+        CHART_AGG["聚合数据图表<br/>平均值最大值最小值"]
+        CHART_PIE["设备状态饼图<br/>在线离线状态"]
+        ALERT_UI["实时告警面板<br/>告警消息展示"]
     end
     
-    %% 数据流向
     SIM --> PROD
     PROD --> KAFKA_CLUSTER
     KAFKA_CLUSTER --> TOPIC_DATA
@@ -186,21 +175,6 @@ flowchart LR
     WEB_UI --> CHART_AGG
     WEB_UI --> CHART_PIE
     WEB_UI --> ALERT_UI
-    
-    %% 样式
-    classDef simBox fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef prodBox fill:#e3f2fd,stroke:#0277bd,stroke-width:2px
-    classDef kafkaBox fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef consBox fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-    classDef webBox fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    classDef chartBox fill:#f1f8e9,stroke:#689f38,stroke-width:2px
-    
-    class SIM,TYPES simBox
-    class PROD prodBox
-    class KAFKA_CLUSTER,TOPIC_DATA,TOPIC_ALERT kafkaBox
-    class CONS,AGG,ALERT consBox
-    class WS_HUB,WEB_UI webBox
-    class CHART_AGG,CHART_PIE,ALERT_UI chartBox
 ```
 
 ## 🚀 设备数据模拟流程图
